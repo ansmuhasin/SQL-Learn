@@ -14,6 +14,8 @@ CREATE TABLE tblName --name in hungarian notation
 )
 -- https://docs.microsoft.com/en-us/sql/relational-databases/tables/create-tables-database-engine?view=sql-server-ver15
 INSERT INTO tblName
+    (ColumnName)
+--+ mentioning column name is optional but we can insert the values in different form if we mention it in different form
 Values(1);
 --! To refresh  intellisense go to edit, intellisense,refresh local cache (cntrl + shift + R)
 
@@ -24,7 +26,7 @@ DELETE FROM tblName
 TRUNCATE TABLE tblName
 -- for deleting the entire data
 DROP TABLE tblName
--- fror deleting the table
+--% for deleting the table
 --+ delete can roll back, truncate cannot
 --+ truncate reset the identity, delete wont
 --+ we can delete specific data using delete
@@ -185,5 +187,146 @@ select 'abc' + 1;
 -- https://docs.microsoft.com/en-us/sql/t-sql/data-types/data-type-precedence-transact-sql?view=sql-server-ver15
 
 --! format string
-select format(2324.4, 'C', 'en-GL') --+ format will format the input to specific format. and the second argument is for what format, currency or decimal, third argument is culture info.
+select format(2324.4, 'C', 'en-GL')
+--+ format will format the input to specific format. and the second argument is for what format, currency or decimal, third argument is culture info.
 --https://docs.microsoft.com/en-us/sql/t-sql/functions/format-transact-sql?view=sql-server-ver15
+
+--! Date types
+-- https://docs.microsoft.com/en-us/sql/t-sql/functions/date-and-time-data-types-and-functions-transact-sql?view=sql-server-ver15
+--+ DATETIME2   more accuracy
+--+ DATETIME  less accuracy, only 3,7,0 values in the 3rd nanosecond. 11:11:11.113, 11:11:11.117, 11:11:11.110 . everything else will be rounded
+--* DATE AND TIME FORMAT WILL BE IN DECRESING ORDER
+--+ YYYY-MM-DD HH:MM:SS.NNN -- here year is first then month then day and then hour minute and seconds.
+--+ the paranthesis in DATETIME2 is for the accuracy of milly seconds. how accurate you want. datetime2(3) 2020-08-22 03:44:23.123, datetime2(5) 2020-08-22 03:44:23.12345 and so on.
+-- + more accuracy will take more bytes
+
+--! FromParts function
+SELECT DATEFROMPARTS(2020, 09, 22)
+--+ this will generate a date value
+SELECT DATETIME2FROMPARTS(2020, 09, 22, 09, 33, 1234, 4)
+--+ this will generate a datetime2 value, last parameter is the accuracy
+
+--! Year month and day function
+--* we can extract the year, month and day
+declare @dateTime datetime2(7) = '2020-08-02 12:45:33.1234567'
+SELECT year(@dateTime), month(@dateTime), day(@dateTime);
+
+--! Current datetime
+SELECT CURRENT_TIMESTAMP;
+--+ returns current dat time in datetime format
+select getdate();
+--+ returns current dat time in datetime format
+select SYSDATETIME()
+--+ this will return current datetime in datetime2
+
+--!Adding to the date
+select dateadd(year, 1, @dateTime)
+--+ we can give month, year, hour, minute anything.
+
+select datepart(hour, @dateTime)
+--+ this will extract the specific part
+
+select datediff(month, @dateTime, getdate())
+--+ gives the difference in months, eirly date will be first parameter
+
+--! datetimeoffset(from UTC)
+--https://docs.microsoft.com/en-us/sql/t-sql/data-types/datetimeoffset-transact-sql?view=sql-server-ver15
+--* this is the datetime with timezone, from UTC
+declare @offsetv datetimeoffset(2) = '2020-08-02 12:45:33.123 +05:30'
+Select todatetimeoffset('2020-08-02 12:45:33.123', '+05:30')
+--+ this will add to offset timezone,not for converting, just to add the timezone info. this will not channge the datetime, instead it wil add just the +5:30 timezone information
+SELECT DATETIME2FROMPARTS(2020, 09, 22, 09, 33, 1234,05,30, 4)
+--+ here before the accuracy we need to send the timezone info
+--* offset time is not utc and indication of timezone. it is already in local time and indication of timezone.
+select sysdatetimeoffset()
+--+ this will give local timezone
+select sysutcdatetime()
+--+ this will give the utc time.
+select switchoffset(offsetv, '-5:00')
+--+ this is for converting from ine timezone to another
+
+--! AT TIME ZONE
+--* this function is a combination of both todatetimeoffset and switchoffset. if the input is not in offset, it will work as todatetimeoffset, else switchoffset.
+--+ takes 2 inputs, datetime and the timezone. which can be fund from sys.time_zone_info . select * from sys.time_zone_info. pass the string as the timezone info. it will take care of the daylight saving
+SELECT sysutcdatetime() AT TIME ZONE 'Central European Standard Time'
+-- as this is not offset, it will only add the timezone info. to convert it. it should be in offset format
+--+ so we can make it to offset and then convert it. so 2 ways
+SELECT sysutcdatetime()  AT TIME ZONE 'UTC'AT TIME ZONE 'Central European Standard Time';
+--+ convert to utc offset then to central
+SELECT todatetimeoffset(sysutcdatetime(), '+00:00') AT TIME ZONE 'Central European Standard Time';
+--+ add 00 to offset and then convert. both are same
+
+--! converting a datetime
+--+ we can convert from string to date and date to string
+declare @dateTime datetime2(7) = '2020-08-02 12:45:33.1234567'
+Select Convert(varchar(20),@dateTime );
+Select Cast(@dateTime AS varchar(20));
+Select Convert(vdatetime2,'2020-08-02 12:45:33.1234567' );
+Select Cast('2020-08-02 12:45:33.1234567' AS datetime2);
+Select Cast('thursday, 25 june 2020' AS date);
+--+ this will fail if we give input like thursday, 25 june 2020. 
+
+--+ for that we need a smart way to convert this
+--! Parse
+--https://docs.microsoft.com/en-us/sql/t-sql/functions/parse-transact-sql?view=sql-server-ver15
+--* use to parse from string to number or datetime, parse have performance issue
+select Parse('thursday, 25 june 2020' as datetime2(7))
+--* better
+
+--* we can use format for doing more convertion
+select format(@dateTime, D)
+--+ D for long date format, d for small date format --* better
+select format(@dateTime, 'MM-DD-YYYY')
+--+ we can specify the format, for month it should be MM, for minutes, it should be mm
+select format(@dateTime, 'MM-DD-YYYY','es-ES')
+--+ we can pass the culture information as well
+
+
+--! Altering a table
+ALTER TABLE tblName
+ADD LastName VARCHAR(10);
+-- 10 bytes isnt enough
+--* To modify the existing column, there are two ways
+--%DROP and Insert
+ALTER TABLE tblName
+DROP COLUMN LastName;
+--+ this will drop the column
+
+ALTER TABLE tblName
+ADD LastName VARCHAR(15);
+-- 15 isnt enough
+
+--% Alter the column
+ALTER TABLE tblName
+ALTER Column LastName VARCHAR(50)
+--+ this will alter the column using alter column cammand
+
+--! Retrieving records
+select *
+from tblName
+where firstName =  '';
+select *
+from tblName
+where firstName <> '';  --+ <> stands for not equals
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
