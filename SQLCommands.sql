@@ -1,4 +1,4 @@
---* Install developer version for all the features for free, but it cannot be used in production. Enterprice and standard is pain. free version is  express but it lack lot of features. so better download developer for learning and testing.
+--* Install developer version for all the features for free, but it cannot be used in production. Enterprice and standard is paid. free version is  express but it lack lot of features. so better download developer for learning and testing.
 --* install SQL server as well as sql server management studio
 
 SELECT 1 + 1;
@@ -27,7 +27,7 @@ DROP TABLE tblName
 -- fror deleting the table
 --+ delete can roll back, truncate cannot
 --+ truncate reset the identity, delete wont
---+ we can delete specific data using truncate
+--+ we can delete specific data using delete
 
 --! DECLAREing a variable
 DECLARE @var AS INT = 3;
@@ -41,10 +41,10 @@ SET @var = @var + 1;
 --* TINYINT, SMALLINT, INT, BIGINT
 
 --! Decimal and numeric
---+ Decimal ans numeric are almost same
+--+ Decimal and numeric are almost same
 --+ Decimal(precision, scale) DECIMAL(Howmany total numbers can it have, what is the number after the point)
---+ DECIMAL(5,2) 12345.12 is valid and 123456.1 is not valid
---+ Dont give default value for decimal, it is a huge value and it takes nine bites == Decimal(18,8)
+--+ DECIMAL(5,2) 123.12 is valid and 1234.1 is not valid
+--+ Dont give default value for decimal, it is a huge value and it takes nine bytes == Decimal(18,8)
 -- https://docs.microsoft.com/en-us/sql/t-sql/data-types/decimal-and-numeric-transact-sql?view=sql-server-ver15
 --! money and smallmoney
 -- https://docs.microsoft.com/en-us/sql/t-sql/data-types/money-and-smallmoney-transact-sql?view=sql-server-ver15
@@ -80,12 +80,12 @@ SELECT RAND(9898)
 SELECT CONVERT(DECIMAL(5, 0), 3)
 --+ convert(expected type, input)
 SELECT CAST(3 AS Decimal(5, 0))
--- (input as expected type)
+--+ (input as expected type)
 --https://docs.microsoft.com/en-us/sql/t-sql/functions/cast-and-convert-transact-sql?view=sql-server-ver15
 
 --! string
---* char          ASCII system, which have only english and the maximum number range is 55, 1byte
---* varchar       ASCII system, which have only english and the maximum number range is 55, 1byte for a charector
+--* char          ASCII system, which have only english , 1byte
+--* varchar       ASCII system, which have only english , 1byte for a charector
 --* nchar         UNICODE system which can have possibly more languages, 2 byte
 --* nvarchar      UNICODE system which can have possibly more languages, 2 byte
 -- https://docs.microsoft.com/en-us/sql/t-sql/data-types/char-and-varchar-transact-sql?view=sql-server-ver15
@@ -104,3 +104,86 @@ DECLARE @name nchar(10) = N'ﻑﻑﻑﻑ';
 --+ but it is fine if we use or not use in char or varchar
 --https://stackoverflow.com/questions/14353238/what-does-n-stands-for-in-a-sql-script-the-one-used-before-characters-in-ins/14353275#:~:text=The%20%22N%22%20prefix%20stands%20for,from%20NVARCHAR%20%2C%20NCHAR%20or%20NTEXT%20.
 -- https://www.sqlshack.com/query-performance-issues-on-varchar-data-type-using-an-n-prefix/
+
+--! string fnctions
+-- https://docs.microsoft.com/en-us/sql/t-sql/functions/string-functions-transact-sql?view=sql-server-ver15
+--* left and right
+select left(@name, 2)
+--+ for getting left 2 charectors
+select right(@name, 2)
+--+ for getting right 2 charectors
+--* substring
+select substring(@name, 2, 3)
+--+ for getting the substring of a string. and sql is not a zero based language . so first charecter is indexed 1.
+--+ it will go to 2nd letter and take next 3 letters
+--* trimming the whitespace (ltrim and rtrim)
+select ltrim(@name)
+--+ it will trim the whitespace from the left
+select rtrim(@name)
+--+ it will trim the whitespace from the right
+select trim(@name)
+--+ this will trim from both sides
+
+--* replace
+select replace(@name,'a','A');
+--+ this will replace a with A
+
+--* upper and lower
+select upper(@name)
+--+ this wll convert all char to upper
+select lower(@name)
+--+ this wll convert all char to lower
+
+--* STRING_SPLIT
+select STRING_SPLIT(@name,' ')
+--+ we can split the string using this function . and we can give the seperator
+
+--! NULL
+-- https://docs.microsoft.com/en-us/sql/t-sql/language-elements/null-and-unknown-transact-sql?view=sql-server-ver15#:~:text=NULL%20indicates%20that%20the%20value,an%20empty%20or%20zero%20value.&text=To%20test%20for%20null%20values,NULL%20in%20the%20WHERE%20clause.
+
+--+ defailt value in sql server will be NULL
+--+ NULL is a value which sql server doesnt know
+DECLARE @value INT;
+SELECT @value
+--+ this will return NULL
+SET @value = @value+2;
+SELECT @value;
+--+ this will still return NULL.. because we are trying to add with a value that we dont know
+--* thi is same for string
+
+--! TRY_PARSE AND TRY_CAST
+--* returns null if the casting fails
+--https://docs.microsoft.com/en-us/sql/t-sql/functions/try-parse-transact-sql?view=sql-server-ver15
+--! joining strings
+declare @fn string,@mn string, @ln string
+set @fn = 'ans';
+set @mn = 'muh';
+select @fn + ' ' + @mn + ' ' + @ln as fullname;
+--+ result will be null. because @Mn is null
+--+ nothing will work with null, = also will not work
+--! iif
+--https://docs.microsoft.com/en-us/sql/t-sql/functions/logical-functions-iif-transact-sql?view=sql-server-ver15
+select @fn + iif(@mn is null, '', ' ' + @mn) + ' ' + @ln
+--+ iif(condition, output for true, output for false), same as turnery operator
+--!CASE
+--https://docs.microsoft.com/en-us/sql/t-sql/language-elements/case-transact-sql
+select @fn + CASE WHEN @mn is null THEN '' ELSE ' ' END + @mn + ' ' + @ln;
+--+ CASE WHEN CONDITION THE OUTPUT FOR TRUE ELSE OUTPUT FOR FALSE
+--! coalesce
+--https://docs.microsoft.com/en-us/sql/t-sql/language-elements/coalesce-transact-sql?view=sql-server-ver15
+select @fn + coalesce(' ' + @mn ,'') + ' ' + @ln
+--+ it can take lot of parameters. it will check the first parameter null or not, if it is, then it will go to next parameter
+--+ then next and then next till it reaches the not mull value.
+--! CONCAT
+--https://docs.microsoft.com/en-us/sql/t-sql/functions/concat-transact-sql?view=sql-server-ver15#:~:text=CONCAT%20takes%20a%20variable%20number,to%20string%20types%20before%20concatenation.
+SELECT CONCAT(@fn, ' '+ @mn, ' ', @ln)
+--+ concat will add the strings
+
+--! Adding string with Number
+select 'abc' + 1;
+--+ this will not convert the number to string. instead it will try to convert from string to number. becase there are some priorities for the type
+-- https://docs.microsoft.com/en-us/sql/t-sql/data-types/data-type-precedence-transact-sql?view=sql-server-ver15
+
+--! format string
+select format(2324.4, 'C', 'en-GL') --+ format will format the input to specific format. and the second argument is for what format, currency or decimal, third argument is culture info.
+--https://docs.microsoft.com/en-us/sql/t-sql/functions/format-transact-sql?view=sql-server-ver15
