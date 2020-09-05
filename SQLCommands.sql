@@ -264,7 +264,7 @@ Select Cast(@dateTime AS varchar(20));
 Select Convert(vdatetime2,'2020-08-02 12:45:33.1234567' );
 Select Cast('2020-08-02 12:45:33.1234567' AS datetime2);
 Select Cast('thursday, 25 june 2020' AS date);
---+ this will fail if we give input like thursday, 25 june 2020. 
+--+ this will fail if we give input like thursday, 25 june 2020.
 
 --+ for that we need a smart way to convert this
 --! Parse
@@ -304,29 +304,140 @@ ALTER Column LastName VARCHAR(50)
 --! Retrieving records
 select *
 from tblName
-where firstName =  '';
+where firstName =  'a';
 select *
 from tblName
-where firstName <> '';  --+ <> stands for not equals
+where firstName <> 'a';
+--+ <> stands for not equals
 
+select *
+from tblName
+where not firstName = 'a';
+--+ we can use not before the where as well
 
+--% for finding patterns we can use LIKE
+--https://docs.microsoft.com/en-us/sql/t-sql/language-elements/like-transact-sql?view=sql-server-ver15
+select *
+from tblName
+where firstName like 'a';
+--+ this will do a equal search
 
+select *
+from tblName
+where firstName like 'a%';
+--+ this will search everything starts with a. % indicated that 0 to infinite chrectors. %a indicates, ends with a.
 
+select *
+from tblName
+where firstName like '%a%';
+--+ This will do a contains search, a can be anywhere
 
+select *
+from tblName
+where firstName like '_a%';
+--+_ indicates 1 charector, so here it will start search from second charector.
 
+select *
+from tblName
+where firstName like '[r-t]%';
+--+ this will start searching for r,s,t in the first letter. [rst] will also work
 
+select *
+from tblName
+where firstName like '[^rst]%';
+--+ this will search for first letter other than r, s, t
 
+--+ if i want to search for any system charector like %, we can put it inside []
 
+select *
+from tblName
+where firstName like '[%]%';
+--+ we can search first charectr as %
 
+--! between
+select *
+from tblname
+where dateOfBirth between '' and ''
 
+--% Another way to do is
 
+select *
+from tblname
+where dateOfBirth >= '' and dateOfBirth < '';
 
+select *
+from tblname
+where year(dateOfBirth) between 1995 and 2000
+--Not the best way
 
+--! Group by
+select year(dateOfBirth), count(*) tblName
+group by year(dateOfBirth)
+--https://docs.microsoft.com/en-us/sql/t-sql/queries/select-group-by-transact-sql?view=sql-server-ver15
+--* SQL server will do the from, where and groupb first, then only it will select. after group by, we will not have normal columns
 
+--! Order by
+--https://docs.microsoft.com/en-us/sql/t-sql/queries/select-order-by-clause-transact-sql?view=sql-server-ver15
+select year(dateOfBirth), count(*) tblName
+group by year(dateOfBirth)
+ORDER BY year(dateOfBirth) ASC
+-- orr desc
 
+--% For getting the number of employees starting with same letter
+select TOP(5)
+    left(firstName), count(*)
+FROM tblEmployee
+-- we can use top keyword just after the select statement
+GROUP BY left(firstName, 1)
+order by count(*) desc
 
+--! Having
+--* Having will be evaluated after the group for filtering grouped items
+--% For getting the number of employees starting with same letter which is less than 50
+select TOP(5)
+    left(firstName), count(*)
+FROM tblEmployee
+-- we can use top keyword just after the select statement
+GROUP BY left(firstName, 1)
+Having count(*) < 50
+--+ this will filter the group items
+order by count(*) desc
+--* count(*), sum(columnname), min(), max() - lot of functions can be used
 
+--! NULLIF()
+--* use to make the value null
+SELECT NULLIF(yourCoumnName,'') as anyVariableName
+from yourTableName;
 
+--% table for the examples
+CREATE TABLE tblEmployee
+(
+    [EmployeeNumber] [int] NOT NULL,
+    [EmployeeFirstName] [varchar](50) NOT NULL,
+    [EmployeeMiddleName] [varchar](50) NULL,
+    [EmployeeLastName] [varchar](50) NOT NULL,
+    [EmployeeGovernment] [char](10) NULL,
+    [DateOfBirth] [date] NOT NULL,
+    [Department] [varchar](19) NULL
+)
 
+create table tbiTransaction
+(
+    [Amount] smallmoney NOT NULL,
+    [DateOfTransaction] smalldatetime NULL,
+    [EmployeeNumber] int NOT NULL
+)
 
+--! JOIN
+--* it is not necessary to alias in joins. we can use the tblname, if that is a unique column name, we dont need to use the tblname
+
+select tblemployee.EmployeeNumber, firstName, LastName, sum(Amount)
+from tblemployees
+    join tblTransaction on tblemployee.EmployeeNumber = tbltransaction.EmployeeNumber
+--+ here we can see some raws got skipped from tblemployees even if there is specific employeenumber, but not there in tblemployee
+group by tblemployee.EmployeeNumber, firstName, LastName
+order by employeeNumber
+--* JOIN is INNER JOIN as default
+
+--* INNER JOIN takes only if both table have the value
 
