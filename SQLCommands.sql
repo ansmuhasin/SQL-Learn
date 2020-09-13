@@ -107,7 +107,7 @@ DECLARE @name nchar(10) = N'ﻑﻑﻑﻑ';
 --https://stackoverflow.com/questions/14353238/what-does-n-stands-for-in-a-sql-script-the-one-used-before-characters-in-ins/14353275#:~:text=The%20%22N%22%20prefix%20stands%20for,from%20NVARCHAR%20%2C%20NCHAR%20or%20NTEXT%20.
 -- https://www.sqlshack.com/query-performance-issues-on-varchar-data-type-using-an-n-prefix/
 
---! string fnctions
+--! string functions
 -- https://docs.microsoft.com/en-us/sql/t-sql/functions/string-functions-transact-sql?view=sql-server-ver15
 --* left and right
 select left(@name, 2)
@@ -261,7 +261,7 @@ SELECT todatetimeoffset(sysutcdatetime(), '+00:00') AT TIME ZONE 'Central Europe
 declare @dateTime datetime2(7) = '2020-08-02 12:45:33.1234567'
 Select Convert(varchar(20),@dateTime );
 Select Cast(@dateTime AS varchar(20));
-Select Convert(vdatetime2,'2020-08-02 12:45:33.1234567' );
+Select Convert(datetime2(7),'2020-08-02 12:45:33.1234567' );
 Select Cast('2020-08-02 12:45:33.1234567' AS datetime2);
 Select Cast('thursday, 25 june 2020' AS date);
 --+ this will fail if we give input like thursday, 25 june 2020.
@@ -325,7 +325,7 @@ where firstName like 'a';
 select *
 from tblName
 where firstName like 'a%';
---+ this will search everything starts with a. % indicated that 0 to infinite chrectors. %a indicates, ends with a.
+--+ this will search everything starts with a. % indicated that 0 to infinite chrectors. %a indicates, starts with a.
 
 select *
 from tblName
@@ -416,7 +416,7 @@ CREATE TABLE tblEmployee
     [EmployeeFirstName] [varchar](50) NOT NULL,
     [EmployeeMiddleName] [varchar](50) NULL,
     [EmployeeLastName] [varchar](50) NOT NULL,
-    [EmployeeGovernment] [char](10) NULL,
+    [EmployeeGovernmentID] [char](10) NULL,
     [DateOfBirth] [date] NOT NULL,
     [Department] [varchar](19) NULL
 )
@@ -440,4 +440,207 @@ order by employeeNumber
 --* JOIN is INNER JOIN as default
 
 --* INNER JOIN takes only if both table have the value
+--* LEFT JOIN Takes all from the right.
+--* RIGHT JOIN All from thr right
+--* CROSS JOIN it will make all the combinations. output will be left toltal multiplie right total
 
+--! Multiple select in a query
+select count(department) as numberofdepartments
+from (       --+ here we can find the number of departments that we will not be able to do in inner query
+select department, count(*) as numberperdepartment
+    --+ This can be onsider as another table result and we can do more query on it. like, we can find the count of departments
+    from tblemployee
+    group by Department) as departments
+
+--! Distinct
+
+select distinct(Department)
+from tblemployee
+--+ this will give the unique values
+
+--!IN TO
+--* we can use into keyword between the select and from, it will create a new table and insert the data
+select distinct(Department) as department, '' as departmentHead
+into tblDepartment
+--+ this will create a new table tblDepartment and insert the values in to it
+from tblemployee
+
+--% #rd Table
+create table tblDepartment
+(
+    [Department] [varchar](19) NULL,
+    [DepartmentHead] [varchar](30) NULL
+)
+
+--% Joining 3 TABLES
+select *
+from tblDepartment.Department, DepartmentHead, Sum(Amount)
+    left join tblemployee on tblDepartment.Department = tblemployee.Department
+    left join tblTransaction on tblDepartment.EmployeeNumber = tblTransaction.EmployeeNumber
+group by tblDepartment.Department,DepartmentHead
+
+--! Deleting the table rows
+--* We can use normal joins to delete the rows, we cannot use orderby or group by in delete statement
+delete tblTransaction
+from tblEmployee as E
+    right join tblTransaction as T on E.EmployeeNumber = T.EmployeeNumber
+where E.EmployeeNumber = NULL
+--+ this will delete records from tblTransaction where there is no employees cinnected
+
+--% another approach - get the all records manually and take the value and pass as the input to the delete
+begin transaction
+--+ We can use transactions for checking before deleting it, and we can rollback them.
+select count(*)
+from tblTransaction
+delete tblTransaction from tblTransaction
+    where EmployeeNumber IN
+    (select TNumber
+from (
+        select E.EmployeeNumber as ENumber, E.EmployeeFirstName, E.EmployeeLastName, T.EmployeeNumber as TNumber, sum(T.Amount) as TotalAmount
+    from tblEmployee as E
+        right join tblTransaction as T
+        on E.EmployeeNumber = T.EmployeeNumber
+    group by E.EmployeeNumber, T.EmployeeNumber, E.EmployeeFirstName,
+        E.EmployeeLastName) as newTable
+where ENumber is null)
+select count(*)
+from tblTransaction
+rollback transaction
+
+--! Update table
+update tblTransaction set employeeNumber = 194
+where employeeNumber in (1,2,3)
+
+--! output keyword
+--*we can output the modified rows using output keyword
+--https://docs.microsoft.com/en-us/sql/t-sql/queries/output-clause-transact-sql?view=sql-server-ver15
+update tblTransaction set employeeNumber = 194
+output inserted.*, updated.*                           --+ here we can see the inserted and deleted records, or any of them
+where employeeNumber in (1,2,3)
+
+--% we can get specific columns as well
+update tblTransaction set employeeNumber = 194
+output inserted.employeeNumber, updated.employeeNumber
+where employeeNumber in (1,2,3)
+
+--! @@Rowcount
+--* we can use @@Rowcount to get the number of rows effected
+update tblTransaction set employeeNumber = 194
+where employeeNumber in (1,2,3)
+select @@Rowcount
+
+DECLARE @MyTableVar table (
+    ProductID int NOT NULL,
+    ProductName nvarchar(50)NOT NULL,
+    ProductModelID int NOT NULL,
+    PhotoID int NOT NULL);
+DELETE Production.ProductProductPhoto
+OUTPUT DELETED.ProductID,
+       p.Name,
+       p.ProductModelID,
+       DELETED.ProductPhotoID
+    INTO @MyTableVar                        --+ we can set the values to another table or variable
+FROM Production.ProductProductPhoto AS ph
+    JOIN Production.Product as p
+    ON ph.ProductID = p.ProductID
+    WHERE p.ProductModelID BETWEEN 120 and 130;
+
+--* While doing an insert, everything will be inserted if suceed. if any item fails, none of the item will be get inserted
+
+--! Constraints
+--! Unique constraint
+--https://docs.microsoft.com/en-us/sql/relational-databases/tables/create-unique-constraints?view=sql-server-ver15#:~:text=You%20can%20create%20a%20unique,creates%20a%20corresponding%20unique%20index.
+--https://docs.microsoft.com/en-us/sql/relational-databases/tables/unique-constraints-and-check-constraints?view=sql-server-ver15
+alter table tblemployees
+add constraint UNQGovernmentID UNIQUE(EmployeeGovernmentID)
+--* Adding a unique constraint will add a key and a index(Non clustered), it will ot be inside constaints
+--% we can add unique key constraint to multiple columns as well
+--* Adding unique key will check for the existence raws and return error
+alter table tbltransaction
+add constraint UNQTransaction UNIQUE(Amount,DateOfTransaction,EmployeeNumber)
+
+--% We can drop a constraint as well
+alter table tblemployees
+drop constraint UNQGovernmentID
+
+
+--% we can add it while creating the table as well
+CREATE table tblName
+(
+    columnName varchar(20) NOT NULL,
+    column2 BIGINT NULL,
+    CONSTRAINT UNQName UNIQUE(columnName)
+)
+
+--% To modify a constraint, we cannot normally modify it, we need to drop it and create again
+
+--!Deault Constraint
+--* Inserts a default value while inserting new values
+--https://docs.microsoft.com/en-us/sql/relational-databases/tables/specify-default-values-for-columns?view=sql-server-ver15
+Alter TABLE tblName
+Add constraint dfltColumn DEFAULT GETUTCDATE() for columnName
+--+ To add a default to an existing column
+
+CREATE table tblName
+(
+    columnName varchar(20) NOT NULL,
+    column2 BIGINT NULL Constraint defaultConst Default getutcdate() --+ this will add default constraint
+        CONSTRAINT UNQName UNIQUE(columnName)
+)
+
+--% same constraint name cannot exist for different table
+--% we cannot delete the column without deleting the constraint
+
+--! Check constraint
+--
+--* can do check while inserting the data
+alter table tblEmployee
+add constraint chckAmount check(Amount > 0 and Amount <= 1000);
+--+ if the column is nullable, we can still insert null
+
+alter table tblEmployee
+add constraint chckMiddleName check(Replace(middleName,'.','') = middleName or middleName is null);
+--+ if there are already some records doesnt support this check, then creating of the constraint will fail
+--+ To handle it, we need to add with nocheck after the table name.
+alter table tblEmployee with nocheck
+add constraint chckMiddleName check(Replace(middleName,'.','') = middleName or middleName is null);
+
+CREATE table tblName
+(
+    columnName varchar(20) NOT NULL,
+    column2 BIGINT NULL check(Replace(middleName,'.','') = middleName or middleName is null)
+)
+--% we can add it in normal way with specific name
+CREATE table tblName
+(
+    columnName varchar(20) NOT NULL,
+    column2 BIGINT NULL,
+    Constraint chkMiddleName check(Replace(middleName,'.','') = middleName or middleName is null)
+)
+
+--! Primary key constraint
+--* will not allow null, can created for multiple columns together. but only one constraint per table, creates a clustered index
+--https://docs.microsoft.com/en-us/sql/relational-databases/tables/primary-and-foreign-key-constraints?view=sql-server-ver15
+alter table tblemployees
+Add constraint prmEmpID primary key(employeeNumber)
+--% Identity
+--* automatically order number, we cannot add to an existing table identity(startpoint, increment), we cannot explisitly insert value to an identity column, we cannot
+CREATE TABLE tblEmployee
+(
+    [EmployeeNumber] [int] NOT NULL Constraint prmryEmpID Primary key Identity(1,1),
+    [EmployeeFirstName] [varchar](50) NOT NULL,
+)
+
+--% to insert to identity column, we need to set the IDENTITY_INSERT to ON
+set IDENTITY_INSERT tblEmployee ON
+insert into tblEmployee
+values(33, '');
+set IDENTITY_INSERT tblEmployee OFF
+--+ if we insert a record with identity insert on and after insert witout identity insert, then the value will start from the last value
+
+select @@Identity
+--+ returns the last identity
+select @@SCOPE_IDENTITY
+--+ returns the last identity
+
+SELECT IDENT_CURRENT('dbo.tblEmployee')  --+ This will take a specific table, other two will do for last executed table
