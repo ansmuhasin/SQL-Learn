@@ -554,7 +554,7 @@ FROM Production.ProductProductPhoto AS ph
 --https://docs.microsoft.com/en-us/sql/relational-databases/tables/unique-constraints-and-check-constraints?view=sql-server-ver15
 alter table tblemployees
 add constraint UNQGovernmentID UNIQUE(EmployeeGovernmentID)
---* Adding a unique constraint will add a key and a index(Non clustered), it will ot be inside constaints
+--* Adding a unique constraint will add a key and a index(Non clustered), it will not be inside constaints
 --% we can add unique key constraint to multiple columns as well
 --* Adding unique key will check for the existence raws and return error
 alter table tbltransaction
