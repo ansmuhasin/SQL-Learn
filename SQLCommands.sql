@@ -6,6 +6,7 @@ SELECT 1 + 1;
 SELECT 1 + 1 AS Result; -- so the output column will be typed as output column
 GO
 --* GO signals the end of a batch of Transact-SQL statements to the SQL Server utilities.
+--* always try to add a go after a ddl statement (data definition)
 -- https://docs.microsoft.com/en-us/sql/t-sql/language-elements/sql-server-utilities-statements-go?view=sql-server-ver15#:~:text=GO%20is%20not%20a%20Transact,an%20instance%20of%20SQL%20Server.
 CREATE TABLE tblName --name in hungarian notation
 (
@@ -584,8 +585,8 @@ Add constraint dfltColumn DEFAULT GETUTCDATE() for columnName
 CREATE table tblName
 (
     columnName varchar(20) NOT NULL,
-    column2 BIGINT NULL Constraint defaultConst Default getutcdate() --+ this will add default constraint
-        CONSTRAINT UNQName UNIQUE(columnName)
+    column2 BIGINT NULL Constraint defaultConst Default getutcdate()
+    --+ this will add default constraint
 )
 
 --% same constraint name cannot exist for different table
@@ -617,7 +618,7 @@ CREATE table tblName
     column2 BIGINT NULL,
     Constraint chkMiddleName check(Replace(middleName,'.','') = middleName or middleName is null)
 )
-
+--* check constraints is for entire table
 --! Primary key constraint
 --* will not allow null, can created for multiple columns together. but only one constraint per table, creates a clustered index
 --https://docs.microsoft.com/en-us/sql/relational-databases/tables/primary-and-foreign-key-constraints?view=sql-server-ver15
@@ -643,4 +644,479 @@ select @@Identity
 select @@SCOPE_IDENTITY
 --+ returns the last identity
 
-SELECT IDENT_CURRENT('dbo.tblEmployee')  --+ This will take a specific table, other two will do for last executed table
+SELECT IDENT_CURRENT('dbo.tblEmployee')
+--+ This will take a specific table, other two will do for last executed table
+
+--!Cascade
+--* can be used to update the foriegn columns if we change the parent table
+
+--! Foriegn key
+--* we need a a primary key or a unique key to do a foriegn key, foriegn key can be null
+--% differnt operations while changing the value inside the parent table
+--+ Not actoin
+--+ cascade
+--+ set null
+--+ set default
+Alter TABLE tblTransaction
+Add constraint tblTransaction_tblEmployee foreign key(employeeNumber) references tblemployee(employeeNumber)
+--% if someone update the primerry key in the relationship. we can use cascade or delete
+Alter TABLE tblTransaction
+Add constraint tblTransaction_tblEmployee foreign key(employeeNumber) references tblemployee(employeeNumber)
+on update cascade  --+ we can give update set null or update set default or no action(no action will throw error?)
+on delete cascade --+ we can give delete set null or delete set default or no action
+
+--! View
+--* we cannot use order by in views unless we have a top or offset in the query,there should be only one select statement in a view
+go
+create view vwName
+as
+    select employeeNumber
+    from tblTransaction
+go
+
+create view vwName
+as
+    select top (100) percent
+        employeeNumber
+    --+ we can use percent in top statement
+    from tblTransaction
+go
+
+--% To alter a view, use Alter keyword and to delete, use drop
+--* we can use the sys.views to find the existing views in the DB
+select *
+from sys.views
+--+ will give us all the information
+select *
+from information_schema.views
+where table_schema = 'dbo' and table_name = 'name'
+--+ this also works
+
+--! exists
+--* we can use if exists to check if there is an existing row
+if exists (select *
+from sys.views
+where name ='name')
+    drop view vwName
+go
+create view vwName
+as
+    select employeeNumber
+    from tblTransaction
+go
+
+--% we can find the code of every views or stored procedure using sys.syscomments
+select *
+from sys.syscomments
+--+ but we need the object id here
+
+select a.text
+from sys.syscomments a
+    join sys.views b on a.id = b.object_id
+where b.name = 'name'
+
+--% another way to do it is
+select object_definition(object_id('name'))
+--+ here we need the object ID for that we can use object_id function
+select *
+from sys.sql_modules
+--+ we can use this as well
+--* we can use sp_helptext as well
+exec sp_helptext 'name'
+--% we can add security to the views, so nobody can view the details of it
+go
+create view vwName
+with
+    encryption
+as
+    --+ we can use encryption to make it encrypted, even we cannot see as well.
+    select employeeNumber
+    from tblTransaction
+go
+
+--+ if we doesnt have permission to tables but we have permissions to the views, then what it does is, it wil go to the view and if I have permission to the same schema(dbo)
+--+ then the table will be accessible from the view even if there is no permission for the table. but if there are another table from another schema but doesnt have the permission
+--+ then need to check for the permission to the specific schema
+
+--* we cannot insert to multiple table using a insert view statement, we can only insert to a single table, same for update and delete
+--% we can use the with check option to fail insert update or delete  operations for the records in the view
+
+go
+create view vwName
+with
+    encryption
+as
+    select employeeNumber
+    from tblTransaction
+with check option      --+ this will fail the update or insert operations for the records in the view
+go
+
+--! we cannot use outer joins(left and rigt) also count and order by in views(more as well), we need to use full tblname with schema(dbo.name)
+--+ we can use OR Alter for atler the view if the view already exists.
+
+--! Triggers
+--https://docs.microsoft.com/en-us/sql/relational-databases/triggers/dml-triggers?view=sql-server-ver15
+--* we can use insert snippet while right clicking and selecting insert snippet option in ssms
+--% after trigger
+create trigger tr_name
+on tblTransaction
+After insert, update, delete         --+ here we can mention the operation and when to initialize the trigger - this is a after trigger
+as
+ begin
+    set nocount on;
+--+ this will stop showing the no of row effected message
+end
+go
+--% in trigger we have a special table called inserted and deleted,
+create trigger tr_name
+on tblTransaction
+After insert, update, delete
+as
+ begin
+    select *
+    from inserte
+    --+ we can use to see the inserted and deleted
+    select *
+    from deleted
+end
+go
+--% instead of triggers
+--* for instead of triggers we can only use any of insert, update, delete. we cannot do together, we need to write them seperately. but we can use together in after
+create trigger tr_name
+on vwName   --+ we can do triggers to views as well. it will work. even if the deletion doesnt work in the view, we can do operation under the table.even if there is a nocheck option in vie, yhis will work
+instead of delete
+as
+begin
+    select *
+    from deleted
+--+ here delete operation will not happen instead select will happen, even if it wont get deleted, still the data will be there in deleted table
+end
+go
+--% we can set data to variable using a select statement
+select @employeeNumber = employeeNumber, @employeeName = employeeName
+from tblemployee
+go
+--* there miight be chance of one trigger triggers another one when the underlying table have another trigger
+--% we can use @@NestLevel to know in which level the trigger is getting called. if the trigger is directly getting called, @@NestLevel will be 1. if another trigger
+--% calls this trigger, then the level will be 2. we can put if condition to not run the trigger when the level is not 1, or we can do another operation, 32 is the maximum level
+create trigger tr_name
+on tblTransaction
+After insert, update, delete
+as
+ begin
+    if @@NestLevel = 1
+    begin
+        select *
+        from inserte
+        select *
+        from deleted
+    end
+end
+go
+
+--% we can use @@Rowcount to determine find the number of rows effected
+
+--% we can use update() function to see if there is any update is happened for a column
+create trigger tr_name
+on tblTransaction
+After insert, update, delete
+as
+ begin
+    if update(Amount)    --+ this will be successful only if the specified column is updated. not  changed the value, just updated
+    begin
+        select *
+        from inserte
+        select *
+        from deleted
+    end
+end
+go
+
+--+ We can join with deleted table for deleting multiple records
+--% Adding trigger on view and deleting the underlying table
+create trigger tr_name
+on vwName
+After insert, update, delete
+as
+ begin
+    select *, 'To be deleted' from deleted   --+ This will join with the deleted table. And we can delete all the matches record. If we use variables, Can we cannot delete all the files
+    delete tbltransaction from tbltransaction T
+    join deleted D on T.Amount = D.Amount
+    and D.TransactionId = T.TransactionId
+end
+go
+
+--! union
+--+ union will add multiple rows together and result as a single output
+--% there should be same number of columns in both rows
+--% the columns should be of compartible type or same(int and bigint) or (varchar(2) and varchar(6))
+
+--+ when combining 2 columns, the output will be of the biggest one, if we combine smallint ant bigint, output will be bigint. varchar(2) and varchar(6) will be varchar(6)
+select convert(varchar(2),'hi')
+union
+select convert(varchar(6),'hello') --+ here the output will be hi and hello. but the output type will be varchar(6)
+--+ column name are taken from first set of the data
+--+there is no specific order.
+select convert(varchar(2),'hi')
+union
+select convert(varchar(6),'hello')
+union
+select convert(varchar(6),'hi')  --+ here the output will be hi and hello. because union will not show the duplicates.
+--% for that we need to use union all
+
+select convert(varchar(2),'hi')
+union
+select convert(int,5) --+ here the output will be an error because botth are incompatible types
+--https://docs.microsoft.com/en-us/sql/t-sql/language-elements/set-operators-union-transact-sql?view=sql-server-ver15
+--! except
+--* except will show the difference between the tables. it will take the first set of data and it will remove the second set of data from it(which is common.), and it will not consider the non matching record from the second set.
+--* so common will be removed and extra rows from 2nd table will be removed
+
+--! intersect
+--* here it will take the common data from both
+
+--% consider two datasets, first one is 1,2,3 and second one is 1,2,4
+--+ union will output of 1,2,3,4(dups will not show)
+--+ union all will be 1,2,3,1,2,4 (everything will be shown)
+--+ except will be 3. (here it will copy the entire table and then which is 1,2,3 then it will take the second and remove common ones, so 1,2 is gone. it will not consider 4, because it is on 2nd dataset. so output will be 3)
+--+ intersect will be 1,2 (here 1 and 2 is the common)
+--https://docs.microsoft.com/en-us/sql/t-sql/language-elements/set-operators-except-and-intersect-transact-sql?view=sql-server-ver15
+select *, row_number() over(order by(select null)) % 3 as ToBeDeleted
+into tmpTransaction  --+ we are adding the values to a temp table, last column will be the remaining of row number/3
+from tblTransaction
+delete from tmpTransaction where ToBeDeleted =1
+update tmpTransaction set DateOfTransaction = dateadd(day, 1, dateoftransaction)
+where ToBeDeleted = 2
+alter table tmpTransaction
+drop column ToBeDeleted
+--+ now some records are common, some are removed and some are changed
+
+select * from tbltransaction
+union
+select * from tmpTransaction
+--% here we get all without dupes
+select * from tbltransaction
+union all
+select * from tmpTransaction
+--% here we get everything with dupes
+select * from tbltransaction
+except
+select * from tmpTransaction
+--% here we get everything which is deleted as well as updated
+select * from tbltransaction
+intersect
+select * from tmpTransaction
+--% here we get everything which is same, not changed records
+
+--* we should use order by at the end of the union
+
+--! isnull
+--% used to check the nullability and return another value if it is null
+declare @name varchar(10) = 'Ans'
+select isnull(@name, 'no name'); --+ if the @name became null, output will be no name
+--! coalesce
+--% use to check the nullability of multiple vslues one by one and return non nullable value
+declare @name1 varchar(10) = 'ans'
+declare @name varchar(10) = 'muhasin'
+select COALESCE(@name1, @name2,'no name'); --+ if name1 nave proper value, output will be name1, if name1 is null, it will check name2, if it is not null,it will return it. and so on
+--% the last item should be some value than null coalesce(null, null) will fail
+
+--! Merge
+--* we can insert update or delete the target table using the merge, if the condition exists.
+--+ when matched AND something else then
+--+ when matched
+--+ when not matched by target Then (When not matched then)
+--+ when not matched by source And something else Then
+--+ when not matched by source Then
+
+MERGE INTO tblTransaction AS T
+USING tblTransactionNew AS S
+ON T.TransactionId = S.TransactionId AND T.TransactionDate = S.TransactionDate
+WHEN MATCHED THEN
+    UPDATE SET Amount = T.Amount + S.Amount
+WHEN NOT MATCHED BY TARGET THEN
+    INSERT (TransactionID,TransactionDate, Amount)
+    VALUES (S.TransactionId,S.TransactionDate, T.Amount)
+WHEN NOT MATCHED BY SOURCE THEN
+    DELETE
+OUTPUT Inserted.*, updated.*;    --+ obviously we can output it
+--% we cannot update or delete the same target more than 1 time. There might be multiple  matching records in the Target table, so in that cae  we might need to group it and reduce the input data
+GO
+BEGIN TRAN
+ALTER TABLE tblTransaction
+ADD comment varchar(10);
+go
+MERGE INTO tblTransaction AS T
+USING (SELECT TransactionId, TransactionDate , sum(Amount) as Amount FROM tblTransactionNew group by TransactionID, TransactionDate) as S
+ON T.TransactionId = S.TransactionId AND T.TransactionDate = S.TransactionDate
+WHEN MATCHED  AND Amount > 0 THEN                         --+ we can add extra conditions here
+    UPDATE SET Amount = T.Amount + S.Amount, comment = 'Updated'
+WHEN MATCHED THEN
+DELETE
+WHEN NOT MATCHED BY TARGET THEN
+    INSERT (TransactionID,TransactionDate, Amount, comment)
+    VALUES (S.TransactionId,S.TransactionDate, T.Amount, 'Inserted')
+WHEN NOT MATCHED BY SOURCE THEN
+    UPDATE SET Comment = 'No changed'
+OUTPUT Inserted.*, updated.*, $action; --+ we can use this variable to see the action
+Rollback tran
+
+--! Stored procedure
+--* we can use stored procedure to encapsulate the code
+GO
+CREATE PROC NameEmployee AS
+BEGIN
+    Select Name from tblemployee
+END
+--% How to call
+execute NameEmployee
+exec NameEmployee
+
+go
+NameEmployee;    --+ we can call the stored procedure with its came if the statement is at the beginning of the batch
+
+--% we can find them by same as views
+select * from sys.procedures where name = 'name'
+select object_id('NameOfProcedure', 'P')
+
+GO
+create proc NameEmployee
+(
+    @ID int
+)
+AS
+BEGIN
+ Select Name from tblemployee where employeeNumber = @ID;
+END
+
+GO
+create proc NameEmployee
+(
+    @IDFrom int,
+    @IDTo int
+)
+AS
+BEGIN
+IF exists (select * from tblemployee where employeeNumber between @IDFrom and @IDTo)
+ Select Name from tblemployee where employeeNumber between @IDFrom and @IDTo
+END
+
+exec NameEmployee 12,16;
+exec NameEmployee @IDFrom = 12, @IDTo = 16;  --+ we can call the sp using the parameter name as well
+
+--! While loop
+GO
+create proc NameEmployee
+(
+    @IDFrom int,
+    @IDTo int
+)
+AS
+BEGIN
+IF exists (select * from tblemployee where employeeNumber between @IDFrom and @IDTo)
+ declare @EmployeeNumber int = @IDFrom;
+ while(@employeeNumber < @IDTo)
+ BEGIN
+    IF not exists (select * from tblemployee where employeeNumber = @employeeNumber)
+    BEGIN
+        SET @employeeNumber = @employeeNumber + 1
+        CONTINUE;     --+ this will continue to the beginning, and will not execute other statements.
+    END
+    Select Name from tblemployee where employeeNumber between @IDFrom and @IDTo
+    SET @employeeNumber = @employeeNumber + 1
+    IF @EmployeeNumber = 500
+        BREAK              --+ this will break the loop
+    goto HelloWorld        --+ this will jump to HelloWorld statement
+ END
+ HelloWorld:
+END
+--+ here it will execute the statement multiple times
+
+--! Output keyword
+--* we can output a variable from the stored procedure
+GO
+create proc NameEmployee
+(
+    @IDFrom int,
+    @IDTo int,
+    @NumberOfRows int OUTPUT    --+ we need to mentoin a new variable as output. can use OUT as well
+)
+AS
+BEGIN
+IF exists (select * from tblemployee where employeeNumber between @IDFrom and @IDTo)
+begin
+ Select Name from tblemployee where employeeNumber between @IDFrom and @IDTo
+SET @NumberOfRows = @@ROWCount;   --+ we can set the variable here
+end
+ELSE
+set @NumberOfRows = 0;
+end
+
+declare @NumRows int
+exec NameEmployee 12, 16, @NumRows
+select @NumRows
+
+--! Ruturn
+--* we can use return statement to return the value. but we can only return 0 or 1. when return executed the SP will ends.
+GO
+create proc NameEmployee
+(
+    @IDFrom int,
+    @IDTo int
+)
+AS
+BEGIN
+IF exists (select * from tblemployee where employeeNumber between @IDFrom and @IDTo)
+begin
+ Select Name from tblemployee where employeeNumber between @IDFrom and @IDTo
+RETURN 1;  --+ it will return 1 if any row is executed
+end
+ELSE
+RETURN 0;
+end
+
+exec NameEmployee 12, 16, @NumRows
+
+--! try and catch
+go
+create proc NameEmployee
+(
+    @ID int
+)
+AS
+BEGIN
+begin try
+ Select Name from tblemployee where employeeNumber = @ID;
+end try
+begin catch
+SELECT ERROR_MESSAGE()          --+ This will give us the message, there are lot of other functions we can use which can be found under error_
+return 0;
+end catch
+END
+--+ error_severity shows the severity. 1-10 is warnings, it wont stop anything. 16 is default. 20-25 is really bad, which stop everything and close db. 26
+--+ severity is bad at higher value
+--+ error_line is the number of line
+
+--! print
+--+ we can print the values from the query
+GO
+create proc NameEmployee
+(
+    @ID int
+)
+AS
+BEGIN
+ print('started')
+ Select Name from tblemployee where employeeNumber = @ID;
+ print('finished')
+END
+go
+--% tblAttendence
+create table tblAttendance
+(
+    EmployeeNumber int,
+    AttendanceMonth date,
+    NumberAttendance smallint,
+    CONSTRAINT PK_Attendance Primary key (EmployeeNumber, AttendanceMonth),
+    CONSTRAINT FK_Attendance_EmployeeNumber FOREIGN KEY(EmployeeNumber)REFERENCES tblemployee(EmployeeNumber)
+)
