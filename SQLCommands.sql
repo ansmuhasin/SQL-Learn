@@ -774,7 +774,7 @@ After insert, update, delete
 as
  begin
     select *
-    from inserte
+    from inserted
     --+ we can use to see the inserted and deleted
     select *
     from deleted
@@ -825,7 +825,7 @@ as
     if update(Amount)    --+ this will be successful only if the specified column is updated. not  changed the value, just updated
     begin
         select *
-        from inserte
+        from Inserted
         select *
         from deleted
     end
@@ -915,7 +915,7 @@ select * from tmpTransaction
 declare @name varchar(10) = 'Ans'
 select isnull(@name, 'no name'); --+ if the @name became null, output will be no name
 --! coalesce
---% use to check the nullability of multiple vslues one by one and return non nullable value
+--% use to check the nullability of multiple values one by one and return non nullable value
 declare @name1 varchar(10) = 'ans'
 declare @name varchar(10) = 'muhasin'
 select COALESCE(@name1, @name2,'no name'); --+ if name1 nave proper value, output will be name1, if name1 is null, it will check name2, if it is not null,it will return it. and so on
@@ -962,6 +962,7 @@ OUTPUT Inserted.*, updated.*, $action; --+ we can use this variable to see the a
 Rollback tran
 
 --! Stored procedure
+--  https://docs.microsoft.com/en-us/sql/relational-databases/stored-procedures/stored-procedures-database-engine?view=sql-server-ver15
 --* we can use stored procedure to encapsulate the code
 GO
 CREATE PROC NameEmployee AS
@@ -1120,3 +1121,44 @@ create table tblAttendance
     CONSTRAINT PK_Attendance Primary key (EmployeeNumber, AttendanceMonth),
     CONSTRAINT FK_Attendance_EmployeeNumber FOREIGN KEY(EmployeeNumber)REFERENCES tblemployee(EmployeeNumber)
 )
+
+--! over()
+--+ ittakes a perticular range of some rows and it does a calculation based on that number over those columns
+select A.employeeNumber, A.attendanceMonth, A.attendance, sum(A.NumberAttendance) over() as TotalAttendance,
+convert(decimal((9,7), A.numberAttendance) / sum(A.NumberAttendance) over() *100 as PercentageAttendance    --+ Here the over will calculate on the entire total of values numberAttendance
+from tblemployee E join tblAttendance A
+on E.EmployeeNumber = A.EmployeeNumber
+
+--! Partition by
+--+ this will change the total value that we considering for the partition, it defines the range of values that we are going to take
+select A.employeeNumber, A.attendanceMonth, A.attendance, sum(A.NumberAttendance) over(partition by A.EmployeeNumber) as TotalAttendance,  --+ here it will only consider the total for only those employee number
+convert(decimal((9,7), A.numberAttendance) / sum(A.NumberAttendance) over(partition by A.EmployeeNumber) *100 as PercentageAttendance
+tblemployee E join tblAttendance A
+on E.EmployeeNumber = A.EmployeeNumber
+where year(A.AttendanceMonth) = 2014
+
+--! order by
+select A.employeeNumber, A.attendanceMonth, A.attendance, sum(A.NumberAttendance) over(partition by A.EmployeeNumber order by A.EmployeeNumber) as TotalAttendance,  --+ here it will only consider the total for only those employee number
+convert(decimal((9,7), A.numberAttendance) / sum(A.NumberAttendance) over(partition by A.EmployeeNumber) *100 as PercentageAttendance   --+ here each output will be added in each step and will be outputted to a column
+tblemployee E join tblAttendance A
+on E.EmployeeNumber = A.EmployeeNumber
+where year(A.AttendanceMonth) = 2014
+
+--+ we can partition by two columns
+select E.[EmployeeNumber], A.attendanceMonth, A.[NumberAttendance], sum(A.NumberAttendance) over(partition by A.[EmployeeNumber], year(A.attendanceMonth)) as TotalAttendance,
+convert(decimal(10,7),A.[NumberAttendance])/ sum(A.NumberAttendance) over(partition by A.[EmployeeNumber], year(A.attendanceMonth)) *100 as PercentageAttendance    --+ Here the over will calculate on the entire total of values numberAttendance
+from [dbo].[tblEmployee] E join tblAttendance A
+on E.EmployeeNumber = A.EmployeeNumber
+
+--! skipped topics related to over()
+
+--! ROW_NUMBER
+--+ can be used to find the current row number, but a a over() as well as the order by is necessary
+select E.[EmployeeNumber], A.attendanceMonth, A.[NumberAttendance],
+ROW_NUMBER() over(order by E.[EmployeeNumber], A.attendanceMonth)
+from [dbo].[tblEmployee] E join tblAttendance A
+on E.EmployeeNumber = A.EmployeeNumber
+
+select row_number() over(order by(slect null)) from tblAttendance --+ this also works, but must be faster because we are not doing any order by
+
+--! skipped ran() and denserank()
