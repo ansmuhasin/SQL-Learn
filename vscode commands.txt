@@ -1,0 +1,52 @@
+Cntrl +  B - open the left panel
+Cntrl + p - for seeing all command
+Cntrl + k +z - special mode (zen Mode)
+Cntrl + \ - clone a tab to other side editor group
+Cntrl + number = switch between the editor group
+while creating file, you can mention folder name as well, if the folder does not exist, it will create new folder for you "folderName/file.css"	
+Cntrl + p - for quick search
+Cntrl + N - new file
+Cntrl + w - closing a file
+cntrl + d - select specific word
+shift + alt + up or down arrow - duplicatee line
+alt + mouse click specific place to type in those places
+cntrl + shift + l - replase all matching words
+alt d - duplicate
+cntrl shift j - jumpie
+alt shift up or down - move the word up and down
+Fira Code font https://github.com/tonsky/FiraCode
+quokka extetension
+Rainbow Brackets extention
+polacode
+advanced new file extention
+live server extension 
+open in browser extension
+vs code icons
+better comments
+javascript es6 snippets
+search node modules
+import cost
+dotenv
+intellisense for css
+bookmark
+es7 react
+vetur
+anguler snippet
+project manager
+settings sync
+cobalt 2
+night owl
+one dark pro
+dracula official
+
+custom snippet (http://vsc-snippets.herokuapp.com/)
+markdown(markdown lint,markdown shortcuts, markdown toc extensions)(https://github.com/jamesqquick/markdown-worksheet)
+editor config extension
+prettier
+wslint
+tslint for typescript
+
+git history extension
+git blame ext
+git project manager
+git lens ext
