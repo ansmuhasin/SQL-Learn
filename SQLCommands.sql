@@ -839,10 +839,12 @@ on vwName
 After insert, update, delete
 as
  begin
-    select *, 'To be deleted' from deleted   --+ This will join with the deleted table. And we can delete all the matches record. If we use variables, Can we cannot delete all the files
+    select *, 'To be deleted'
+    from deleted
+    --+ This will join with the deleted table. And we can delete all the matches record. If we use variables, Can we cannot delete all the files
     delete tbltransaction from tbltransaction T
-    join deleted D on T.Amount = D.Amount
-    and D.TransactionId = T.TransactionId
+        join deleted D on T.Amount = D.Amount
+            and D.TransactionId = T.TransactionId
 end
 go
 
@@ -852,21 +854,24 @@ go
 --% the columns should be of compartible type or same(int and bigint) or (varchar(2) and varchar(6))
 
 --+ when combining 2 columns, the output will be of the biggest one, if we combine smallint ant bigint, output will be bigint. varchar(2) and varchar(6) will be varchar(6)
-select convert(varchar(2),'hi')
+    select convert(varchar(2),'hi')
 union
-select convert(varchar(6),'hello') --+ here the output will be hi and hello. but the output type will be varchar(6)
+    select convert(varchar(6),'hello')
+--+ here the output will be hi and hello. but the output type will be varchar(6)
 --+ column name are taken from first set of the data
 --+there is no specific order.
-select convert(varchar(2),'hi')
+    select convert(varchar(2),'hi')
 union
-select convert(varchar(6),'hello')
+    select convert(varchar(6),'hello')
 union
-select convert(varchar(6),'hi')  --+ here the output will be hi and hello. because union will not show the duplicates.
+    select convert(varchar(6),'hi')
+--+ here the output will be hi and hello. because union will not show the duplicates.
 --% for that we need to use union all
 
-select convert(varchar(2),'hi')
+    select convert(varchar(2),'hi')
 union
-select convert(int,5) --+ here the output will be an error because botth are incompatible types
+    select convert(int,5)
+--+ here the output will be an error because botth are incompatible types
 --https://docs.microsoft.com/en-us/sql/t-sql/language-elements/set-operators-union-transact-sql?view=sql-server-ver15
 --! except
 --* except will show the difference between the tables. it will take the first set of data and it will remove the second set of data from it(which is common.), and it will not consider the non matching record from the second set.
@@ -882,7 +887,8 @@ select convert(int,5) --+ here the output will be an error because botth are inc
 --+ intersect will be 1,2 (here 1 and 2 is the common)
 --https://docs.microsoft.com/en-us/sql/t-sql/language-elements/set-operators-except-and-intersect-transact-sql?view=sql-server-ver15
 select *, row_number() over(order by(select null)) % 3 as ToBeDeleted
-into tmpTransaction  --+ we are adding the values to a temp table, last column will be the remaining of row number/3
+into tmpTransaction
+--+ we are adding the values to a temp table, last column will be the remaining of row number/3
 from tblTransaction
 delete from tmpTransaction where ToBeDeleted =1
 update tmpTransaction set DateOfTransaction = dateadd(day, 1, dateoftransaction)
@@ -891,21 +897,29 @@ alter table tmpTransaction
 drop column ToBeDeleted
 --+ now some records are common, some are removed and some are changed
 
-select * from tbltransaction
+    select *
+    from tbltransaction
 union
-select * from tmpTransaction
+    select *
+    from tmpTransaction
 --% here we get all without dupes
-select * from tbltransaction
+    select *
+    from tbltransaction
 union all
-select * from tmpTransaction
+    select *
+    from tmpTransaction
 --% here we get everything with dupes
-select * from tbltransaction
+    select *
+    from tbltransaction
 except
-select * from tmpTransaction
+    select *
+    from tmpTransaction
 --% here we get everything which is deleted as well as updated
-select * from tbltransaction
+    select *
+    from tbltransaction
 intersect
-select * from tmpTransaction
+    select *
+    from tmpTransaction
 --% here we get everything which is same, not changed records
 
 --* we should use order by at the end of the union
@@ -913,12 +927,14 @@ select * from tmpTransaction
 --! isnull
 --% used to check the nullability and return another value if it is null
 declare @name varchar(10) = 'Ans'
-select isnull(@name, 'no name'); --+ if the @name became null, output will be no name
+select isnull(@name, 'no name');
+--+ if the @name became null, output will be no name
 --! coalesce
 --% use to check the nullability of multiple values one by one and return non nullable value
 declare @name1 varchar(10) = 'ans'
 declare @name varchar(10) = 'muhasin'
-select COALESCE(@name1, @name2,'no name'); --+ if name1 nave proper value, output will be name1, if name1 is null, it will check name2, if it is not null,it will return it. and so on
+select COALESCE(@name1, @name2,'no name');
+--+ if name1 nave proper value, output will be name1, if name1 is null, it will check name2, if it is not null,it will return it. and so on
 --% the last item should be some value than null coalesce(null, null) will fail
 
 --! Merge
@@ -947,7 +963,9 @@ ALTER TABLE tblTransaction
 ADD comment varchar(10);
 go
 MERGE INTO tblTransaction AS T
-USING (SELECT TransactionId, TransactionDate , sum(Amount) as Amount FROM tblTransactionNew group by TransactionID, TransactionDate) as S
+USING (SELECT TransactionId, TransactionDate , sum(Amount) as Amount
+FROM tblTransactionNew
+group by TransactionID, TransactionDate) as S
 ON T.TransactionId = S.TransactionId AND T.TransactionDate = S.TransactionDate
 WHEN MATCHED  AND Amount > 0 THEN                         --+ we can add extra conditions here
     UPDATE SET Amount = T.Amount + S.Amount, comment = 'Updated'
@@ -958,48 +976,60 @@ WHEN NOT MATCHED BY TARGET THEN
     VALUES (S.TransactionId,S.TransactionDate, T.Amount, 'Inserted')
 WHEN NOT MATCHED BY SOURCE THEN
     UPDATE SET Comment = 'No changed'
-OUTPUT Inserted.*, updated.*, $action; --+ we can use this variable to see the action
+OUTPUT Inserted.*, updated.*, $action;
+--+ we can use this variable to see the action
 Rollback tran
 
 --! Stored procedure
 --  https://docs.microsoft.com/en-us/sql/relational-databases/stored-procedures/stored-procedures-database-engine?view=sql-server-ver15
 --* we can use stored procedure to encapsulate the code
 GO
-CREATE PROC NameEmployee AS
+CREATE PROC NameEmployee
+AS
 BEGIN
-    Select Name from tblemployee
+    Select Name
+    from tblemployee
 END
 --% How to call
 execute NameEmployee
 exec NameEmployee
 
 go
-NameEmployee;    --+ we can call the stored procedure with its came if the statement is at the beginning of the batch
+NameEmployee;
+--+ we can call the stored procedure with its came if the statement is at the beginning of the batch
 
 --% we can find them by same as views
-select * from sys.procedures where name = 'name'
+select *
+from sys.procedures
+where name = 'name'
 select object_id('NameOfProcedure', 'P')
 
 GO
 create proc NameEmployee
-(
+    (
     @ID int
 )
 AS
 BEGIN
- Select Name from tblemployee where employeeNumber = @ID;
+    Select Name
+    from tblemployee
+    where employeeNumber = @ID;
 END
 
 GO
 create proc NameEmployee
-(
+    (
     @IDFrom int,
     @IDTo int
 )
 AS
 BEGIN
-IF exists (select * from tblemployee where employeeNumber between @IDFrom and @IDTo)
- Select Name from tblemployee where employeeNumber between @IDFrom and @IDTo
+    IF exists (select *
+    from tblemployee
+    where employeeNumber between @IDFrom and @IDTo)
+ Select Name
+    from tblemployee
+    where employeeNumber between @IDFrom and @IDTo
 END
 
 exec NameEmployee 12,16;
@@ -1008,28 +1038,37 @@ exec NameEmployee @IDFrom = 12, @IDTo = 16;  --+ we can call the sp using the pa
 --! While loop
 GO
 create proc NameEmployee
-(
+    (
     @IDFrom int,
     @IDTo int
 )
 AS
 BEGIN
-IF exists (select * from tblemployee where employeeNumber between @IDFrom and @IDTo)
+    IF exists (select *
+    from tblemployee
+    where employeeNumber between @IDFrom and @IDTo)
  declare @EmployeeNumber int = @IDFrom;
- while(@employeeNumber < @IDTo)
+    while(@employeeNumber < @IDTo)
  BEGIN
-    IF not exists (select * from tblemployee where employeeNumber = @employeeNumber)
+        IF not exists (select *
+        from tblemployee
+        where employeeNumber = @employeeNumber)
     BEGIN
+            SET @employeeNumber = @employeeNumber + 1
+            CONTINUE;
+        --+ this will continue to the beginning, and will not execute other statements.
+        END
+        Select Name
+        from tblemployee
+        where employeeNumber between @IDFrom and @IDTo
         SET @employeeNumber = @employeeNumber + 1
-        CONTINUE;     --+ this will continue to the beginning, and will not execute other statements.
+        IF @EmployeeNumber = 500
+        BREAK
+        --+ this will break the loop
+        goto HelloWorld
+    --+ this will jump to HelloWorld statement
     END
-    Select Name from tblemployee where employeeNumber between @IDFrom and @IDTo
-    SET @employeeNumber = @employeeNumber + 1
-    IF @EmployeeNumber = 500
-        BREAK              --+ this will break the loop
-    goto HelloWorld        --+ this will jump to HelloWorld statement
- END
- HelloWorld:
+    HelloWorld:
 END
 --+ here it will execute the statement multiple times
 
@@ -1037,18 +1076,24 @@ END
 --* we can output a variable from the stored procedure
 GO
 create proc NameEmployee
-(
+    (
     @IDFrom int,
     @IDTo int,
-    @NumberOfRows int OUTPUT    --+ we need to mentoin a new variable as output. can use OUT as well
+    @NumberOfRows int OUTPUT
+--+ we need to mentoin a new variable as output. can use OUT as well
 )
 AS
 BEGIN
-IF exists (select * from tblemployee where employeeNumber between @IDFrom and @IDTo)
+    IF exists (select *
+    from tblemployee
+    where employeeNumber between @IDFrom and @IDTo)
 begin
- Select Name from tblemployee where employeeNumber between @IDFrom and @IDTo
-SET @NumberOfRows = @@ROWCount;   --+ we can set the variable here
-end
+        Select Name
+        from tblemployee
+        where employeeNumber between @IDFrom and @IDTo
+        SET @NumberOfRows = @@ROWCount;
+    --+ we can set the variable here
+    end
 ELSE
 set @NumberOfRows = 0;
 end
@@ -1061,17 +1106,22 @@ select @NumRows
 --* we can use return statement to return the value. but we can only return 0 or 1. when return executed the SP will ends.
 GO
 create proc NameEmployee
-(
+    (
     @IDFrom int,
     @IDTo int
 )
 AS
 BEGIN
-IF exists (select * from tblemployee where employeeNumber between @IDFrom and @IDTo)
+    IF exists (select *
+    from tblemployee
+    where employeeNumber between @IDFrom and @IDTo)
 begin
- Select Name from tblemployee where employeeNumber between @IDFrom and @IDTo
-RETURN 1;  --+ it will return 1 if any row is executed
-end
+        Select Name
+        from tblemployee
+        where employeeNumber between @IDFrom and @IDTo
+        RETURN 1;
+    --+ it will return 1 if any row is executed
+    end
 ELSE
 RETURN 0;
 end
@@ -1081,13 +1131,15 @@ exec NameEmployee 12, 16, @NumRows
 --! try and catch
 go
 create proc NameEmployee
-(
+    (
     @ID int
 )
 AS
 BEGIN
-begin try
- Select Name from tblemployee where employeeNumber = @ID;
+    begin try
+ Select Name
+    from tblemployee
+    where employeeNumber = @ID;
 end try
 begin catch
 SELECT ERROR_MESSAGE()          --+ This will give us the message, there are lot of other functions we can use which can be found under error_
@@ -1102,14 +1154,16 @@ END
 --+ we can print the values from the query
 GO
 create proc NameEmployee
-(
+    (
     @ID int
 )
 AS
 BEGIN
- print('started')
- Select Name from tblemployee where employeeNumber = @ID;
- print('finished')
+    print('started')
+    Select Name
+    from tblemployee
+    where employeeNumber = @ID;
+    print('finished')
 END
 go
 --% tblAttendence
@@ -1125,40 +1179,93 @@ create table tblAttendance
 --! over()
 --+ ittakes a perticular range of some rows and it does a calculation based on that number over those columns
 select A.employeeNumber, A.attendanceMonth, A.attendance, sum(A.NumberAttendance) over() as TotalAttendance,
-convert(decimal((9,7), A.numberAttendance) / sum(A.NumberAttendance) over() *100 as PercentageAttendance    --+ Here the over will calculate on the entire total of values numberAttendance
+    convert(decimal(9,7), A.numberAttendance) / sum(A.NumberAttendance) over() *100 as PercentageAttendance
+--+ Here the over will calculate on the entire total of values numberAttendance
 from tblemployee E join tblAttendance A
-on E.EmployeeNumber = A.EmployeeNumber
+    on E.EmployeeNumber = A.EmployeeNumber
 
 --! Partition by
 --+ this will change the total value that we considering for the partition, it defines the range of values that we are going to take
-select A.employeeNumber, A.attendanceMonth, A.attendance, sum(A.NumberAttendance) over(partition by A.EmployeeNumber) as TotalAttendance,  --+ here it will only consider the total for only those employee number
-convert(decimal((9,7), A.numberAttendance) / sum(A.NumberAttendance) over(partition by A.EmployeeNumber) *100 as PercentageAttendance
-tblemployee E join tblAttendance A
-on E.EmployeeNumber = A.EmployeeNumber
+select A.employeeNumber, A.attendanceMonth, A.attendance, sum(A.NumberAttendance) over(partition by A.EmployeeNumber) as TotalAttendance, --+ here it will only consider the total for only those employee number
+    convert(decimal(9,7), A.numberAttendance) / sum(A.NumberAttendance) over(partition by A.EmployeeNumber) *100 as PercentageAttendance
+from tblemployee E join tblAttendance A
+    on E.EmployeeNumber = A.EmployeeNumber
 where year(A.AttendanceMonth) = 2014
 
 --! order by
-select A.employeeNumber, A.attendanceMonth, A.attendance, sum(A.NumberAttendance) over(partition by A.EmployeeNumber order by A.EmployeeNumber) as TotalAttendance,  --+ here it will only consider the total for only those employee number
-convert(decimal((9,7), A.numberAttendance) / sum(A.NumberAttendance) over(partition by A.EmployeeNumber) *100 as PercentageAttendance   --+ here each output will be added in each step and will be outputted to a column
-tblemployee E join tblAttendance A
-on E.EmployeeNumber = A.EmployeeNumber
+select A.employeeNumber, A.attendanceMonth, A.attendance, sum(A.NumberAttendance) over(partition by A.EmployeeNumber order by A.EmployeeNumber) as TotalAttendance, --+ here it will only consider the total for only those employee number
+    convert(decimal(9,7), A.numberAttendance) / sum(A.NumberAttendance) over(partition by A.EmployeeNumber) *100 as PercentageAttendance
+--+ here each output will be added in each step and will be outputted to a column
+from tblemployee E join tblAttendance A
+    on E.EmployeeNumber = A.EmployeeNumber
 where year(A.AttendanceMonth) = 2014
 
 --+ we can partition by two columns
 select E.[EmployeeNumber], A.attendanceMonth, A.[NumberAttendance], sum(A.NumberAttendance) over(partition by A.[EmployeeNumber], year(A.attendanceMonth)) as TotalAttendance,
-convert(decimal(10,7),A.[NumberAttendance])/ sum(A.NumberAttendance) over(partition by A.[EmployeeNumber], year(A.attendanceMonth)) *100 as PercentageAttendance    --+ Here the over will calculate on the entire total of values numberAttendance
+    convert(decimal(10,7),A.[NumberAttendance])/ sum(A.NumberAttendance) over(partition by A.[EmployeeNumber], year(A.attendanceMonth)) *100 as PercentageAttendance
+--+ Here the over will calculate on the entire total of values numberAttendance
 from [dbo].[tblEmployee] E join tblAttendance A
-on E.EmployeeNumber = A.EmployeeNumber
+    on E.EmployeeNumber = A.EmployeeNumber
 
 --! skipped topics related to over()
 
 --! ROW_NUMBER
 --+ can be used to find the current row number, but a a over() as well as the order by is necessary
 select E.[EmployeeNumber], A.attendanceMonth, A.[NumberAttendance],
-ROW_NUMBER() over(order by E.[EmployeeNumber], A.attendanceMonth)
+    ROW_NUMBER() over(order by E.[EmployeeNumber], A.attendanceMonth)
 from [dbo].[tblEmployee] E join tblAttendance A
-on E.EmployeeNumber = A.EmployeeNumber
+    on E.EmployeeNumber = A.EmployeeNumber
 
-select row_number() over(order by(slect null)) from tblAttendance --+ this also works, but must be faster because we are not doing any order by
+select row_number() over(order by(select null))
+from tblAttendance
+--+ this also works, but must be faster because we are not doing any order by
 
---! skipped ran() and denserank()
+--! skipped rank() and denserank() and NTILE
+
+--! first_value , last_value()
+select E.[EmployeeNumber], A.attendanceMonth, A.[NumberAttendance],
+    first_value(A.NumberAttendance) over (partition by A.EmployeeNumber order by A.attendanceMonth) as firstmonth
+--+ we get the first value in the list
+from [dbo].[tblEmployee] E join tblAttendance A
+    on E.EmployeeNumber = A.EmployeeNumber
+
+select E.[EmployeeNumber], A.attendanceMonth, A.[NumberAttendance],
+    last_value(A.NumberAttendance) over (partition by A.EmployeeNumber order by A.attendanceMonth) as firstmonth
+--+ we get the last value in the list
+from [dbo].[tblEmployee] E join tblAttendance A
+    on E.EmployeeNumber = A.EmployeeNumber
+
+--! lag and lead
+--+ lag go backwards and lead go forwards
+--+ lag will give the previous value
+--+ lead will give the next value
+select E.[EmployeeNumber], A.attendanceMonth, A.[NumberAttendance],
+    lag(A.NumberAttendance) over (partition by A.EmployeeNumber order by A.attendanceMonth) as mylag
+--+ here we gonna get the previous value
+from [dbo].[tblEmployee] E join tblAttendance A
+    on E.EmployeeNumber = A.EmployeeNumber
+
+--% we can also pass one more parameter to see the 2nd last or any number -- lead(A.NumberAttendance, 3), here we can see next after 3rd value
+select E.[EmployeeNumber], A.attendanceMonth, A.[NumberAttendance],
+    lead(A.NumberAttendance, 3) over (partition by A.EmployeeNumber order by A.attendanceMonth) as mylead
+--+ next 3rd value
+from [dbo].[tblEmployee] E join tblAttendance A
+    on E.EmployeeNumber = A.EmployeeNumber
+
+--+ lag and lead will create null at the end or beginning of the partition
+--% we can pass 3rd parameter, which is default when the lead or lag is null
+select E.[EmployeeNumber], A.attendanceMonth, A.[NumberAttendance],
+    lag(A.NumberAttendance, 2, 0) over (partition by A.EmployeeNumber order by A.attendanceMonth) as mylag
+--+ here we gonna get the previous 2 value, and nll value will be replaced by 0
+from [dbo].[tblEmployee] E join tblAttendance A
+    on E.EmployeeNumber = A.EmployeeNumber
+
+--% we can find the differences with previous values
+select E.[EmployeeNumber], A.attendanceMonth, A.[NumberAttendance],
+    lag(A.NumberAttendance, 2, 0) over (partition by A.EmployeeNumber order by A.attendanceMonth) as mylag,
+    A.NumberAttendance - lag(A.NumberAttendance) over (partition by A.EmployeeNumber order by A.attendanceMonth) as difference
+--+ here we can see the difference
+from [dbo].[tblEmployee] E join tblAttendance A
+    on E.EmployeeNumber = A.EmployeeNumber
+
+--! skipped topics CUME_DIST PERCENTILE_CONT ROLLUP GROUPING
