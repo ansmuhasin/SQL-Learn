@@ -1357,3 +1357,98 @@ from tblemployee as E
 where EmployeeLastName like 'y%'
 
 --+ this time Second approach using the subquery have better performance
+
+select * from tbltransaction as T where
+(select employeenumber from tblemployee as E where E.employeeName like 'y%' and E.employeeNumber = T.employeeNumber)
+--+ we can do this to get only transactions whose employee name is starts with y using the subquery. we used it in the where
+--+ this is the same as we did before using the joins, both having same time
+
+--! rank()
+select *,
+    rank() over(partition by D.department order by D.employeenumber) as Therank   --+ we will get ranks
+from [dbo].[tblDepartment] D join tblEmployee E
+    on E.EmployeeNumber = A.EmployeeNumber
+
+--% top r ranks
+select * from (select *,
+    rank() over(partition by D.department order by D.employeenumber) as Therank
+from [dbo].[tblDepartment] D join tblEmployee E
+    on E.EmployeeNumber = A.EmployeeNumber) as RankTable
+    where Therank <= 5;   --+ here we can put the entire query to a sybquery and use where outise to filter usimg the rank
+
+--! With statement
+--+ In the above case, if we wanna use the same inner table agin, we might need to repeat the same subquery again. we can avoid it using with
+--+ using with we can basically create a temporary table and use that table in the entire query anywhere
+with MyRankTable as (select * fromselect *,
+    rank() over(partition by D.department order by D.employeenumber) as Therank
+    from [dbo].[tblDepartment] D join tblEmployee E
+    on E.EmployeeNumber = A.EmployeeNumber)
+select * from MyRankTable
+where Therank <= 5;
+
+--% we can use multiple tables in with statement
+with MyRankTable as (select * fromselect *,
+    rank() over(partition by D.department order by D.employeenumber) as Therank
+    from [dbo].[tblDepartment] D join tblEmployee E
+    on E.EmployeeNumber = A.EmployeeNumber)
+tblYear2014 as (select * from tbltransaction where dateoftransaction <= '2014-01-01')
+select * from MyRankTable
+left join tblYear2014
+on tblYear2014.EmployeeNumber = MyRankTable.EmployeeNumber
+where Therank <= 5;
+
+--+ the scope is only in one select statement, we cant have multiple select using the with tables
+
+--! PIVOT
+--+ Used to group the values and return a result
+with myTable as
+(select year(DateOfTransaction) as TheYear, month(DateOfTransaction) as TheMonth, Amount from tblTransaction)
+select *| from myTable i
+PIVOT (sum(Amount) for TheMonth in ([[1], [2], [3], [4], [5], [6], [7], [8], [9] [20], [12], [12])) as mypvt
+ORDER BY TheYear
+--+ Here the grouping will happen for each year and for the months that we provided. and the amount will show
+
+--! self join
+--+ when the same table is connected to the same table, we use self join
+alter table tblemployee
+add Manager int
+go
+
+select E.£mployeeNumber, £.EmployeeFirstName, £.EmployeeLastName,
+M.EmployeeNumber as ManagerNumber, M.EmployeeFirstName as ManagerFirstName,
+M.EmployeeLastName as ManagerLastName
+from tblEmployee as E
+left JOIN tblemployee as M
+on E.Manager = M.EmployeeNumber
+
+--! Recursive statement - CTE Common table expression
+--% to find the boss level, we can use recursive with
+--+ It actually loops through the table(kinda), or it is like joining with the same table, and looping the same table.
+with myTable as(
+    select *, 0 as BossLevel
+    from tblemployee where manager is null
+    union all
+    select *, M.BossLevel + 1 as BossLevel
+    from tblemployee as E
+    join myTable as M     --+ when it go through ech record, we are joining with the same table and inserting into the same table, so the table will grow and we select from the same table
+    where E.Manager = M.EmployeeNumber
+)
+select * from myTable
+
+--! functions
+CREATE function myFunction
+(
+    @Amount int
+)
+Returns int
+AS
+BEGIN
+Return @Amount * @Amount;
+END
+GO
+
+select employeeNumber, dbo.myFunction(amount) from tblTransaction   --+ we must use schema name
+
+declare @var int;
+execute @var = dbo.myFunction 123;   --+ we can call it in this way as well
+select @var;
