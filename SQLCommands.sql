@@ -1589,11 +1589,121 @@ select isjson(@j)   --+ this will return 1 for json data, 0 for wrong json forma
 declare @json nvarchar (4000)
 
 set @json = '{
-“name” :"Phillip",
-“Shopping” :
+"name" :"Phillip",
+"Shopping" :
 {"ShoppingTrip":1,
- "Item": [{"Bananas", "Cost”:5},{"apple", "Cost”:6},{"orange", "Cost”:5}]
+ "Item": [{"name":"Bananas", "Cost":5},{"name":"apple", "Cost":6},{"name":"orange", "Cost":5}]
 }}'
-select json_query(@jason, '$')   --+ $ means the enirity of it. from the roots
-select json_query(@jason, '$.pping')   --+ this will give the shopping object`
+select json_query(@json, '$')   --+ $ means the enirity of it. from the roots
+select json_query(@json, '$.Shopping')   --+ this will give the shopping object`
 
+select json_value(@json,  '$.name')    --+ this will give the name value
+select json_value(@json,  '$.Shopping.Item[0].name')   --+ this will give the irst item in the list, 0 based
+
+select json_modify(@json,'$.Shopping.Item[0].name', 'Big Bananas')   --+ this will modify the value
+select json_modify(@json,'$.Shopping.Item[0]', json_query('{name:"Big Bananas", "Cost”:3}'))  --+ we can change the entire object as well
+--! for adding a new value
+select json_modify(@json,'$.Date', '2020-12-3')   --+ this will add a new field, if we need to insert a object, we might need to use json_query()
+
+--! converting json to table
+select * from openjson(@json, '$') --+ this will show as a table
+select * from openjson(@json, '$.Shopping.Item')
+select * from openjson(@json, '$.Shopping.Item')
+              with(name varchar(100), Cost int)  --+ this will create a proper table structure
+
+--! converting table to json
+select * from tblemployee for json path    --+ this will create the json document from the table
+select * from tblemployee for json path, root('employees')
+
+--! Transaction
+--+ when a transaction happens to a row, it will lock the other transactiona. we cannot do anyhing on the same row
+--+ single statement is already a transaction
+begin transaction
+select * from tblemployee
+end transaction
+begin transaction
+update tblemployee set firstName ='' where employeeNumber = 100;
+rollback transaction
+--+ while having inner transactions, if we commit the inner transaction, and rollback outer, the entire transaction will be rollback
+--+ even if we rollback the inner transaction and commit outer transaction, still everything will be rolled backwards
+--! Marking
+begin transaction MyTransaction MARK 'My Transaction'    --+ Marking will log the transactionto a log table.
+update tblemployee set firstName ='' where employeeNumber = 100;
+commit transaction
+
+--! TransCount
+--+ we can find the transaction count using @@TRANCOUNT
+select @@TRANCOUNT
+
+--!Scope and type
+
+--! Isolation Levels
+--% Read committed - default. cannot read without commit, can only read committed
+--% Read uncommitted - we can read the uncommitted data, dirty read
+--% Repeatable Read -  cannot read the data again if other transaction already read the data
+
+set transaction isolation level read uncommitted
+set transaction isolation level repeatable read
+--! Heap
+--https://docs.microsoft.com/en-us/sql/relational-databases/indexes/heaps-tables9-without-clustered-indexes?view=sql-server-ver15
+
+--! Clustered index
+--https://docs.microsoft.com/en-us/sql/relational-databases/indexes/clustered-and-nonclustered-indexes-described?view=sql-server-ver15
+--+ clustered means the table going to be sorted physically, physically RE-sort the table and create the index IN RIGHT ORDER
+create clustered index idx_tblEmployee on tblEmployee(employeeNumber)
+drop index idx_tblEmployee on tblEmployee
+--+ we cannot have more than one clustered index in one table
+--% A primary key will create a clustered index by default
+
+--! Non clustered
+--+ create a index which is ordered but it will not physically order the data
+--+ both non clustered and clustered can have duplicated values
+create nonclustered index idx_tblEmployee_DateofBirth on tblEmployee(dateOfBirth)
+--+ we can create clustered index, non clustered index and unique index on more than one colum.
+--+ if we crested non clustered index for one column and we select multicle columns, then the nonclustered index seek will not work. it only works for that perticulr column
+--+ we have a non clustered index which is dateOfBirth, if we do a select * and where dateofbirth, nonclustered seek will not work.
+select * from tblEmployee where dateOfBirth <= '2000-10-10'   --+ this will not do a non cluctered seek, it do scan
+select dateOfBirth from tblEmployee where dateOfBirth <= '2000-10-10'  --+ this will do a seek, if we want to do it for multiple olumn, we might need  to add the index for multiple columns
+
+create nonclustered index idx_tblEmployee_DateofBirth on tblEmployee(dateOfBirth, department)
+--+ we can create index for same column again, depending on the selected column, it will call the respective index seek
+
+create nonclustered index idx_tblEmployee_DateofBirth on tblEmployee(employeeLastName) where department = 'hr'  --+ filtered index
+
+--include
+create nonclustered index idx_tblEmployee on tblEmployee(employeeNumber) include(EmployeeFirstName,EmployeeLastName)  --+ this is better and will create inner nodes
+
+
+SET STATISTICS IO ON   --+ for showing details of input output in the message
+SET SHOWPLAN_ALL ON --+ for seeing the execution plan in table
+SET SHOWPLAN_XML ON --+ for seeing the execution plan in xml
+SET SHOWPLAN_TEXT ON --+ for seeing the execution plan in text
+SET STATISTICS TIME ON --+ for seeing execution time
+
+
+--! Cursors
+--+ DECLARE cursorname CURSOR FOR SELECT statement FROM table
+--+ OPEN cursorname
+--+ FETCH cursorname into
+--+ CLOSE cursorname
+--+ @@FETCH_STATUS
+
+go
+declare @employeeNumber int;
+declare cursorforemp CURSOR FOR SELECT employeeNumber FROM tblEmployee
+open cursorforemp
+fetch next from cursorforemp into @employeeNumber
+while @@FETCH_STATUS = 0
+begin
+select * from tblTransaction WHERE employeeNumber = @employeeNumber;
+fetch next from cursorforemp into @employeeNumber
+END
+CLOSE cursorforemp
+DEALLOCATE cursorforemp
+GO
+
+--!cursor is very slow
+
+
+
+--% Cast is standard sql, convert is nonstandard
