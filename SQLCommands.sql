@@ -1178,6 +1178,7 @@ create table tblAttendance
 )
 
 --! over()
+--https://docs.microsoft.com/en-us/sql/t-sql/queries/select-over-clause-transact-sql?view=sql-server-ver15
 --+ ittakes a perticular range of some rows and it does a calculation based on that number over those columns
 select A.employeeNumber, A.attendanceMonth, A.attendance, sum(A.NumberAttendance) over() as TotalAttendance,
     convert(decimal(9,7), A.numberAttendance) / sum(A.NumberAttendance) over() *100 as PercentageAttendance
@@ -1290,12 +1291,13 @@ values('third point', geometry::Point(3,5,0))
 
 
 --! Subqueries
-select t.*
-from tblEmployee e
-    inner join tbltransaction t
-    on e.EmployeeNumber = t.EmployeeNumber
-where e.employeeName like 'y%'
---+ we can use this query to find the transactions where employee name to start with y
+
+--https://docs.microsoft.com/en-us/sql/relational-databases/performance/subqueries?view=sql-server-ver15
+select t.* from tblEmployee e
+inner join tbltransaction t
+on e.EmployeeNumber = t.EmployeeNumber
+where e.employeeName like 'y%'    --+ we can use this query to find the transactions where employee name to start with y
+>>>>>>> origin/master
 
 select *
 from tblemployee
@@ -1338,12 +1340,7 @@ from tblemployee
 where employeeName like 'y%');
 --+ we can use any, which is same as in we cannot use <> instead of =. it fails
 --! some
-select *
-from tbltransaction
-where employeenumber = some(select employeenumber
-from tblemployee
-where employeeName like 'y%');
---+ sum  is  same as many
+select * from tbltransaction where employeenumber = some(select employeenumber from tblemployee where employeeName like 'y%');  --+ some  is  same as many
 
 --% for <> we need to use all instead of any
 select *
@@ -1409,9 +1406,242 @@ from tblemployee as E
 where EmployeeLastName like 'y%'
 
 --+ this time Second approach using the subquery have better performance
+select * from tbltransaction as T where
+(select employeenumber from tblemployee as E where E.employeeName like 'y%' and E.employeeNumber = T.employeeNumber)
+--+ we can do this to get only transactions whose employee name is starts with y using the subquery. we used it in the where
+--+ this is the same as we did before using the joins, both having same time
 
+--! rank()
+select *,
+    rank() over(partition by D.department order by D.employeenumber) as Therank   --+ we will get ranks
+from [dbo].[tblDepartment] D join tblEmployee E
+    on E.EmployeeNumber = A.EmployeeNumber
 
+--% top r ranks
+select * from (select *,
+    rank() over(partition by D.department order by D.employeenumber) as Therank
+from [dbo].[tblDepartment] D join tblEmployee E
+    on E.EmployeeNumber = A.EmployeeNumber) as RankTable
+    where Therank <= 5;   --+ here we can put the entire query to a sybquery and use where outise to filter usimg the rank
 
+--! With statement
+--+ In the above case, if we wanna use the same inner table agin, we might need to repeat the same subquery again. we can avoid it using with
+--+ using with we can basically create a temporary table and use that table in the entire query anywhere
+with MyRankTable as (select * fromselect *,
+    rank() over(partition by D.department order by D.employeenumber) as Therank
+    from [dbo].[tblDepartment] D join tblEmployee E
+    on E.EmployeeNumber = A.EmployeeNumber)
+select * from MyRankTable
+where Therank <= 5;
+
+--% we can use multiple tables in with statement
+with MyRankTable as (select * fromselect *,
+    rank() over(partition by D.department order by D.employeenumber) as Therank
+    from [dbo].[tblDepartment] D join tblEmployee E
+    on E.EmployeeNumber = A.EmployeeNumber)
+tblYear2014 as (select * from tbltransaction where dateoftransaction <= '2014-01-01')
+select * from MyRankTable
+left join tblYear2014
+on tblYear2014.EmployeeNumber = MyRankTable.EmployeeNumber
+where Therank <= 5;
+
+--+ the scope is only in one select statement, we cant have multiple select using the with tables
+
+--! PIVOT
+--+ Used to group the values and return a result
+with myTable as
+(select year(DateOfTransaction) as TheYear, month(DateOfTransaction) as TheMonth, Amount from tblTransaction)
+select *| from myTable i
+PIVOT (sum(Amount) for TheMonth in ([[1], [2], [3], [4], [5], [6], [7], [8], [9] [20], [12], [12])) as mypvt
+ORDER BY TheYear
+--+ Here the grouping will happen for each year and for the months that we provided. and the amount will show
+
+--! self join
+--+ when the same table is connected to the same table, we use self join
+alter table tblemployee
+add Manager int
+go
+
+select E.£mployeeNumber, £.EmployeeFirstName, £.EmployeeLastName,
+M.EmployeeNumber as ManagerNumber, M.EmployeeFirstName as ManagerFirstName,
+M.EmployeeLastName as ManagerLastName
+from tblEmployee as E
+left JOIN tblemployee as M
+on E.Manager = M.EmployeeNumber
+
+--! Recursive statement - CTE Common table expression
+--% to find the boss level, we can use recursive with
+--+ It actually loops through the table(kinda), or it is like joining with the same table, and looping the same table.
+with myTable as(
+    select *, 0 as BossLevel
+    from tblemployee where manager is null
+    union all
+    select *, M.BossLevel + 1 as BossLevel
+    from tblemployee as E
+    join myTable as M     --+ when it go through ech record, we are joining with the same table and inserting into the same table, so the table will grow and we select from the same table
+    where E.Manager = M.EmployeeNumber
+)
+select * from myTable
+
+--! functions
+--https://docs.microsoft.com/en-us/sql/t-sql/statements/create-function-transact-sql?view=sql-server-ver15
+CREATE function myFunction
+(
+    @Amount int
+)
+Returns int
+AS
+BEGIN
+Return @Amount * @Amount;
+END
+GO
+
+select employeeNumber, dbo.myFunction(amount) from tblTransaction   --+ we must use schema name
+
+declare @var int;
+execute @var = dbo.myFunction 123;   --+ we can call it in this way as well
+select @var;
+
+--% ex-
+CREATE function NumberOfTransactions
+(
+    @employeeNumber int
+)
+returns int
+as
+begin
+Declare @NumberOfTransactions int;
+select @NumberOfTransactions = count(*) from tblTransaction
+where employeeNumber = @employeeNumber;
+return @NumberOfTransactions;
+end
+go
+
+--! Inline table function
+--% here we will return a table output
+create function TransactionList(@employeeNumber int)
+Returns Table as return
+(
+    select * from tblTransaction where employeeNumber = @employeeNumber;
+)
+
+select * from dbo.TransactionList;
+
+--! Multistatement table function
+create function FullName(@employeeNumber int)
+Returns @fullnameTable Table(
+    employeeNumber int,
+    fullName varchar(max)
+) as
+begin
+return
+(
+    insert into fullnameTable select employeeNumber,firstName+lastName as fullName from tblemployee where employeeNumber = @employeeNumber;
+)
+end
+--+ we cant use joins with result of function
+--+ But we can use apply
+--! Apply
+--https://www.mssqltips.com/sqlservertip/1958/sql-server-cross-apply-and-outer-apply/
+--+ Evaluates right_table_source against each row of the left_table_source to produce rowsets.
+--+ Outer apply act like a left join
+--+ cross apply act like a inner join
+select * from tblTransactionas T
+outer apply FullName(T.EmployeeNumber) as N
+--+ we can use UDF in select, and where
+--+ basically we can do insert or update or anything inthe right table expression
+
+--! Synonym
+--+ we can create a pointer or a referance to the table, an alternative name
+create synonym EmployeeTable
+for tblEmployee
+go
+select * from employeeTable
+--+ when we create a synonym, it is not necessary to have a table at that time
+--+ we can point to different db as well
+
+--! Dynamic query
+declare @command = as varchar(max);
+set @command = 'select * from tblEmployee where employeeNumber = ';
+declare @value varchar(10);
+set @value = '10'
+execute (@command + @value);
+--% this is SQL injection
+--! Do not do it
+--% we can use something different
+declare @command = as nvarchar(max);    --+ this must be nvarchar
+set @command = N'select * from tblEmployee where employeeNumber = @empNum';
+declare @value nvarchar(10);   --+ this must be nvarchar
+set @value = N'10'
+execute sys.sp_executesql @statement = command, @params = N'@empNum int', @empNum = @value --+ much safer way
+
+--! GUID
+--+ it is a unique identifier
+declare @newvalue as uniqueidentifier;
+SET @newvalue = NEWID();
+select @newvalue as newvalue;
+--+ every time it will be a new value
+
+create table uniqueTables (
+    UniqueID uniqueidentifier constant df default NEWID(),  --+ here the value will be random every time and jhave a performance problem
+    EMPNUM int
+)
+
+create table uniqueTables (
+    UniqueID uniqueidentifier constant df default NEWSEQUENTIALID(),   --+ here the GUID created will be in sequance and better performance
+    EMPNUM int
+)
+--+ GUID takes more space
+
+--! skipped SEQUENCE
+
+--! xml
+<shopping>                      --+ root element, its better to have a single root element. if there is multiple root elements, which is a not well formed xml
+    <item cost="5">Apple</item>     --+ cost is an attribute
+    <item cost="2">Mongo</item>         --+ these are elements
+    <item cost="3">Orange</item>
+</shopping>
+--+ we should not use spaces, and better to not use other symbols
+
+declare @x xml = '<shopping>
+    <item cost="5">Apple</item>
+    <item cost="2">Mongo</item>
+    <item cost="3">Orange</item>
+</shopping>'
+select @x;
+alter table tblEmployee
+add column xmlData xml null;
+
+--! to convert a table into xml raw
+select * from tblEmployee where employeeNumber = 1 for xml raw;    --+ this will create attribute type data
+select * from tblEmployee where employeeNumber = 1 for xml raw('myraw');   --+ this will give a specific name
+select * from tblEmployee where employeeNumber = 1 for xml raw('myraw') elements;    --+ this will create element type xml
+select * from tblEmployee where employeeNumber = 1 for xml auto;   --+ this will create the names automatically
+select * from tblEmployee where employeeNumber = 1 for xml path;   --+ this will give elements as well
+select * from tblEmployee where employeeNumber = 1 for xml path();   --+ this will give elements as well with different name
+slelect EmployeeFirstName as '@FisrtName', EmployeeLastName as '@LastName'   --+ when we do that, these values will be inside a attribute
+, * from tblEmployee where employeeNumber = 1 for xml path()
+select * from tblEmployee where employeeNumber = 1 for xml path, root('MyXML')   --+ This will create a root element
+--! To find a value in element from xml.
+@x.value('(/shopping/item)[0]', 'varchar(50)'); --+ this will return the specific value
+@x.value('(/shopping/item/@cost)[0]', 'varchar(50)');  --+ this will erturn the attribute value
+
+--! Skipped xml topics
+declare @j varchar(max) = '{name:"Ans",age:"21"}'
+select isjson(@j)   --+ this will return 1 for json data, 0 for wrong json format
+--! json_value & json_query
+--% json_value returns one value
+--% json_query returns object or an array
+declare @json nvarchar (4000)
+
+set @json = '{
+“name” :"Phillip",
+“Shopping” :
+{"ShoppingTrip":1,
+ "Item": [{"Bananas", "Cost”:5},{"apple", "Cost”:6},{"orange", "Cost”:5}]
+}}'
+select json_query(@jason, '$')   --+ $ means the enirity of it. from the roots
+select json_query(@jason, '$.pping')   --+ this will give the shopping object`
 
 --! Statitics and execution plan
 --! different joins
