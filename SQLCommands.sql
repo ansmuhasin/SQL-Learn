@@ -1,4 +1,5 @@
---* Install developer version for all the features for free, but it cannot be used in production. Enterprice and standard is paid. free version is  express but it lack lot of features. so better download developer for learning and testing.
+--* Install developer version for all the features for free, but it cannot be used in production. Enterprice and standard is paid. 
+--* free version is  express but it lack lot of features. so better download developer for learning and testing.
 --* install SQL server as well as sql server management studio
 
 SELECT 1 + 1;
@@ -1276,53 +1277,97 @@ create table tblGeometry
 (
     id bigint not null,
     desciption varchar(max),
-    GeometricData  geometry
+    GeometricData geometry
 )
-insert into tblGeometry values('first point',geometry::STGeomFromText('POINT (3 4)',0))
-insert into tblGeometry values('third point',geometry::Point(3,5,0))      --+ we can use this as well
+insert into tblGeometry
+values('first point', geometry::STGeomFromText('POINT (3 4)',0))
+insert into tblGeometry
+values('third point', geometry::Point(3,5,0))
+--+ we can use this as well
 
 
 --! skipped other geometry topics
 
 
 --! Subqueries
-select t.* from tblEmployee e
-inner join tbltransaction t
-on e.EmployeeNumber = t.EmployeeNumber
-where e.employeeName like 'y%'    --+ we can use this query to find the transactions where employee name to start with y
+select t.*
+from tblEmployee e
+    inner join tbltransaction t
+    on e.EmployeeNumber = t.EmployeeNumber
+where e.employeeName like 'y%'
+--+ we can use this query to find the transactions where employee name to start with y
 
-select * from tblemployee where employeeName like 'y%'   --+ but we can use this query to find the employee ids first and pass it manually to the tbltransaction as well
-select * from tbltransaction where employeenumber in (1,2,3,4)    --+ this also works. but we cant hard code it
-select * from tbltransaction where employeenumber in (select employeenumber from tblemployee where employeeName like 'y%');  --+ this will do and which is a subquery, no joining. this is the basic
+select *
+from tblemployee
+where employeeName like 'y%'
+--+ but we can use this query to find the employee ids first and pass it manually to the tbltransaction as well
+select *
+from tbltransaction
+where employeenumber in (1,2,3,4)
+--+ this also works. but we cant hard code it
+select *
+from tbltransaction
+where employeenumber in (select employeenumber
+from tblemployee
+where employeeName like 'y%');
+--+ this will do and which is a subquery, no joining. this is the basic
 
 --! Not in the sub query
-select * from tbltransaction where employeenumber in (select employeenumber from tblemployee where employeeName not like 'y%')   --+ here we will run the inner query first and 
+select *
+from tbltransaction
+where employeenumber in (select employeenumber
+from tblemployee
+where employeeName not like 'y%')
+--+ here we will run the inner query first and 
 --+ which means we get all the transaction ids from tblemployees which doesnt have first letter y. and then pass this to the tbltransaction. so it act like a inner join.
-select * from tbltransaction where employeenumber not in (select employeenumber from tblemployee where employeeName like 'y%')   --+ here we will run the inner query first and 
+select *
+from tbltransaction
+where employeenumber not in (select employeenumber
+from tblemployee
+where employeeName like 'y%')
+--+ here we will run the inner query first and 
 --+ which means we get all the transaction ids from tblemployees which have first letter y. then it will seed it to the tbltransaction and do a not in. so it will 
 --+ find all records from tbltransaction. basically it act as a left join
 --+ small changes in query can make a huge difference
 
 --! any
-select * from tbltransaction where employeenumber = any(select employeenumber from tblemployee where employeeName like 'y%');  --+ we can use any, which is same as in we cannot use <> instead of =. it fails
+select *
+from tbltransaction
+where employeenumber = any(select employeenumber
+from tblemployee
+where employeeName like 'y%');
+--+ we can use any, which is same as in we cannot use <> instead of =. it fails
 --! some
-select * from tbltransaction where employeenumber = some(select employeenumber from tblemployee where employeeName like 'y%');  --+ sum  is  same as many
+select *
+from tbltransaction
+where employeenumber = some(select employeenumber
+from tblemployee
+where employeeName like 'y%');
+--+ sum  is  same as many
 
 --% for <> we need to use all instead of any
-select * from tbltransaction where employeenumber <> all(select employeenumber from tblemployee where employeeName like 'y%');  --+ this will work
+select *
+from tbltransaction
+where employeenumber <> all(select employeenumber
+from tblemployee
+where employeeName like 'y%');  --+ this will work
 --% any , sum are equal to OR
 --% all equals to AND
 go
 
 --% following both queries are same
-select * from tbltransaction t
-inner join tbltransaction e
-on e.EmployeeNumber = t.EmployeeNumber
+select *
+from tbltransaction t
+    inner join tbltransaction e
+    on e.EmployeeNumber = t.EmployeeNumber
 where e.employeeName like 'y%'
 
-select * from tbltransaction t
-inner join (select employeenumber from tblemployee where employeeName like 'y%') as e
-on e.EmployeeNumber = t.EmployeeNumber
+select *
+from tbltransaction t
+    inner join (select employeenumber
+    from tblemployee
+    where employeeName like 'y%') as e
+    on e.EmployeeNumber = t.EmployeeNumber
 --+ it is our wish to choose. both have same execution plan and time
 
 --% but if we replace the same with a left join the results will deffer
@@ -1332,28 +1377,59 @@ on e.EmployeeNumber = t.EmployeeNumber
 --+ here we will get the employee details and number of transactions in a new column
 select E.EmployeeNumber, E.EmployeeFirstName, E.EmployeeLastName, count(T.EmployeeNumber) as NumTransactions
 from tblTransaction as T
-inner join tblemployee as E
-on E.EmployeeNumber = T.EmployeeNumber
+    inner join tblemployee as E
+    on E.EmployeeNumber = T.EmployeeNumber
 Where E.EmployeeLastName like 'y%'
-group by E.EmployeeNumber, &.EmployeeFirstName, £.EmployeeLastName
+group by E.EmployeeNumber, E.EmployeeFirstName, E.EmployeeLastName
 order by E.EmployeeNumber
 
 --+ to make it, lets start simple
-select * , (select count(T.EmployeeNumber) from tbltransaction as T) as Total
+select * , (select count(T.EmployeeNumber)
+    from tbltransaction as T) as Total
 from tblemployee
 where EmployeeLastName like 'y%'
 --+ now we will get the employee details and a new column with the total number of transactions, which is entire transaction
 
-select * , (select count(T.EmployeeNumber) from tbltransaction as T where T.EmployeeNumber = E.EmployeeNumber) as Total
+select * , (select count(T.EmployeeNumber)
+    from tbltransaction as T
+    where T.EmployeeNumber = E.EmployeeNumber) as Total
 from tblemployee as E
 where EmployeeLastName like 'y%'
 
 --+ if we change the count(T.EmployeeNumber) to DateOfTransaction. it will throw error. because the sub query should only return one value, so we
 --+ we might need to use sum() or min() or count()
 --+ if we need one more column as sum of amount, weneed to introduce it as a new column
-select * , (select count(T.EmployeeNumber) from tbltransaction as T where T.EmployeeNumber = E.EmployeeNumber) as Total,
-(select sum(T.Amount) from tbltransaction as T where T.EmployeeNumber = E.EmployeeNumber) as SumAmount,
+select * , (select count(T.EmployeeNumber)
+    from tbltransaction as T
+    where T.EmployeeNumber = E.EmployeeNumber) as Total,
+    (select sum(T.Amount)
+    from tbltransaction as T
+    where T.EmployeeNumber = E.EmployeeNumber) as SumAmount
 from tblemployee as E
 where EmployeeLastName like 'y%'
 
 --+ this time Second approach using the subquery have better performance
+
+
+
+
+--! Statitics and execution plan
+--! different joins
+--% Merge joing - efficient, needs indexes
+--% loop join - small table and big table
+--% hash join - 2 big table without indexes
+
+--! sorting will cost lot of performance, dont do it if it is not necessary
+--% we can use with recompile for stored procedure, so every time it will create new execution plan
+
+--! DMV
+select * from sys.dm_db_index_usage_stats   --+ used to find the index details and stats
+select db_name()   --+ to find the db name from the id
+select db_id() --+ for finding the current db id
+
+select db_name(database_id),object_name(object_id),i.name , *
+from sys.dm_db_index_usage_stats as ius
+join sys.indexes i
+on ius.object_id = i.object_id and ius.index_id = i.index_id
+where database_id = db_id()
+--+  we can find unused indexes and we can remove it.
