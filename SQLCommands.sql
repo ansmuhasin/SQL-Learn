@@ -1703,7 +1703,25 @@ DEALLOCATE cursorforemp
 GO
 
 --!cursor is very slow
+--! Statitics and execution plan
+--! different joins
+--% Merge joing - efficient, needs indexes
+--% loop join - small table and big table
+--% hash join - 2 big table without indexes
 
+--! sorting will cost lot of performance, dont do it if it is not necessary
+--% we can use with recompile for stored procedure, so every time it will create new execution plan
 
+--! DMV
+select * from sys.dm_db_index_usage_stats   --+ used to find the index details and stats
+select db_name()   --+ to find the db name from the id
+select db_id() --+ for finding the current db id
+
+select db_name(database_id),object_name(object_id),i.name , *
+from sys.dm_db_index_usage_stats as ius
+join sys.indexes i
+on ius.object_id = i.object_id and ius.index_id = i.index_id
+where database_id = db_id()
+--+  we can find unused indexes and we can remove it.
 
 --% Cast is standard sql, convert is nonstandard
