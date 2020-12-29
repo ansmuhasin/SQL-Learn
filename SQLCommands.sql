@@ -1277,10 +1277,13 @@ create table tblGeometry
 (
     id bigint not null,
     desciption varchar(max),
-    GeometricData  geometry
+    GeometricData geometry
 )
-insert into tblGeometry values('first point',geometry::STGeomFromText('POINT (3 4)',0))
-insert into tblGeometry values('third point',geometry::Point(3,5,0))      --+ we can use this as well
+insert into tblGeometry
+values('first point', geometry::STGeomFromText('POINT (3 4)',0))
+insert into tblGeometry
+values('third point', geometry::Point(3,5,0))
+--+ we can use this as well
 
 
 --! skipped other geometry topics
@@ -1288,43 +1291,84 @@ insert into tblGeometry values('third point',geometry::Point(3,5,0))      --+ we
 
 --! Subqueries
 --https://docs.microsoft.com/en-us/sql/relational-databases/performance/subqueries?view=sql-server-ver15
-select t.* from tblEmployee e
-inner join tbltransaction t
-on e.EmployeeNumber = t.EmployeeNumber
-where e.employeeName like 'y%'    --+ we can use this query to find the transactions where employee name to start with y
+select t.*
+from tblEmployee e
+    inner join tbltransaction t
+    on e.EmployeeNumber = t.EmployeeNumber
+where e.employeeName like 'y%'
+--+ we can use this query to find the transactions where employee name to start with y
 
-select * from tblemployee where employeeName like 'y%'   --+ but we can use this query to find the employee ids first and pass it manually to the tbltransaction as well
-select * from tbltransaction where employeenumber in (1,2,3,4)    --+ this also works. but we cant hard code it
-select * from tbltransaction where employeenumber in (select employeenumber from tblemployee where employeeName like 'y%');  --+ this will do and which is a subquery, no joining. this is the basic
+select *
+from tblemployee
+where employeeName like 'y%'
+--+ but we can use this query to find the employee ids first and pass it manually to the tbltransaction as well
+select *
+from tbltransaction
+where employeenumber in (1,2,3,4)
+--+ this also works. but we cant hard code it
+select *
+from tbltransaction
+where employeenumber in (select employeenumber
+from tblemployee
+where employeeName like 'y%');
+--+ this will do and which is a subquery, no joining. this is the basic
 
 --! Not in the sub query
-select * from tbltransaction where employeenumber in (select employeenumber from tblemployee where employeeName not like 'y%')   --+ here we will run the inner query first and 
+select *
+from tbltransaction
+where employeenumber in (select employeenumber
+from tblemployee
+where employeeName not like 'y%')
+--+ here we will run the inner query first and 
 --+ which means we get all the transaction ids from tblemployees which doesnt have first letter y. and then pass this to the tbltransaction. so it act like a inner join.
-select * from tbltransaction where employeenumber not in (select employeenumber from tblemployee where employeeName like 'y%')   --+ here we will run the inner query first and 
+select *
+from tbltransaction
+where employeenumber not in (select employeenumber
+from tblemployee
+where employeeName like 'y%')
+--+ here we will run the inner query first and 
 --+ which means we get all the transaction ids from tblemployees which have first letter y. then it will seed it to the tbltransaction and do a not in. so it will 
 --+ find all records from tbltransaction. basically it act as a left join
 --+ small changes in query can make a huge difference
 
 --! any
-select * from tbltransaction where employeenumber = any(select employeenumber from tblemployee where employeeName like 'y%');  --+ we can use any, which is same as in we cannot use <> instead of =. it fails
+select *
+from tbltransaction
+where employeenumber = any(select employeenumber
+from tblemployee
+where employeeName like 'y%');
+--+ we can use any, which is same as in we cannot use <> instead of =. it fails
 --! some
-select * from tbltransaction where employeenumber = some(select employeenumber from tblemployee where employeeName like 'y%');  --+ some  is  same as many
+select *
+from tbltransaction
+where employeenumber = some(select employeenumber
+from tblemployee
+where employeeName like 'y%');
+--+ some  is  same as many
 
 --% for <> we need to use all instead of any
-select * from tbltransaction where employeenumber <> all(select employeenumber from tblemployee where employeeName like 'y%');  --+ this will work
+select *
+from tbltransaction
+where employeenumber <> all(select employeenumber
+from tblemployee
+where employeeName like 'y%');  --+ this will work
 --% any , sum are equal to OR
 --% all equals to AND
 go
 
 --% following both queries are same
-select * from tbltransaction t
-inner join tbltransaction e
-on e.EmployeeNumber = t.EmployeeNumber
+select *
+from tbltransaction t
+    inner join tbltransaction e
+    on e.EmployeeNumber = t.EmployeeNumber
 where e.employeeName like 'y%'
 
-select * from tbltransaction t
-inner join (select employeenumber from tblemployee where employeeName like 'y%') as e
-on e.EmployeeNumber = t.EmployeeNumber
+select *
+from tbltransaction t
+    inner join (select employeenumber
+    from tblemployee
+    where employeeName like 'y%') as e
+    on e.EmployeeNumber = t.EmployeeNumber
 --+ it is our wish to choose. both have same execution plan and time
 
 --% but if we replace the same with a left join the results will deffer
@@ -1334,79 +1378,126 @@ on e.EmployeeNumber = t.EmployeeNumber
 --+ here we will get the employee details and number of transactions in a new column
 select E.EmployeeNumber, E.EmployeeFirstName, E.EmployeeLastName, count(T.EmployeeNumber) as NumTransactions
 from tblTransaction as T
-inner join tblemployee as E
-on E.EmployeeNumber = T.EmployeeNumber
+    inner join tblemployee as E
+    on E.EmployeeNumber = T.EmployeeNumber
 Where E.EmployeeLastName like 'y%'
-group by E.EmployeeNumber, &.EmployeeFirstName, £.EmployeeLastName
+group by E.EmployeeNumber, &.EmployeeFirstName, £.
+EmployeeLastName
 order by E.EmployeeNumber
 
 --+ to make it, lets start simple
-select * , (select count(T.EmployeeNumber) from tbltransaction as T) as Total
+select * , (select count(T.EmployeeNumber)
+    from tbltransaction as T) as Total
 from tblemployee
 where EmployeeLastName like 'y%'
 --+ now we will get the employee details and a new column with the total number of transactions, which is entire transaction
 
-select * , (select count(T.EmployeeNumber) from tbltransaction as T where T.EmployeeNumber = E.EmployeeNumber) as Total
+select * , (select count(T.EmployeeNumber)
+    from tbltransaction as T
+    where T.EmployeeNumber = E.EmployeeNumber) as Total
 from tblemployee as E
 where EmployeeLastName like 'y%'
 
 --+ if we change the count(T.EmployeeNumber) to DateOfTransaction. it will throw error. because the sub query should only return one value, so we
 --+ we might need to use sum() or min() or count()
 --+ if we need one more column as sum of amount, weneed to introduce it as a new column
-select * , (select count(T.EmployeeNumber) from tbltransaction as T where T.EmployeeNumber = E.EmployeeNumber) as Total,
-(select sum(T.Amount) from tbltransaction as T where T.EmployeeNumber = E.EmployeeNumber) as SumAmount,
+select * , (select count(T.EmployeeNumber)
+    from tbltransaction as T
+    where T.EmployeeNumber = E.EmployeeNumber) as Total,
+    (select sum(T.Amount)
+    from tbltransaction as T
+    where T.EmployeeNumber = E.EmployeeNumber) as SumAmount, 
 from tblemployee as E
 where EmployeeLastName like 'y%'
 
 --+ this time Second approach using the subquery have better performance
 
-select * from tbltransaction as T where
-(select employeenumber from tblemployee as E where E.employeeName like 'y%' and E.employeeNumber = T.employeeNumber)
+select *
+from tbltransaction as T
+where
+(select employeenumber
+from tblemployee as E
+where E.employeeName like 'y%' and E.employeeNumber = T.employeeNumber)
 --+ we can do this to get only transactions whose employee name is starts with y using the subquery. we used it in the where
 --+ this is the same as we did before using the joins, both having same time
 
 --! rank()
 select *,
-    rank() over(partition by D.department order by D.employeenumber) as Therank   --+ we will get ranks
+    rank() over(partition by D.department order by D.employeenumber) as Therank
+--+ we will get ranks
 from [dbo].[tblDepartment] D join tblEmployee E
     on E.EmployeeNumber = A.EmployeeNumber
 
 --% top r ranks
-select * from (select *,
-    rank() over(partition by D.department order by D.employeenumber) as Therank
-from [dbo].[tblDepartment] D join tblEmployee E
-    on E.EmployeeNumber = A.EmployeeNumber) as RankTable
-    where Therank <= 5;   --+ here we can put the entire query to a sybquery and use where outise to filter usimg the rank
+select *
+from (select *,
+        rank() over(partition by D.department order by D.employeenumber) as Therank
+    from [dbo].[tblDepartment] D join tblEmployee E
+        on E.EmployeeNumber = A.EmployeeNumber) as RankTable
+where Therank <= 5;
+--+ here we can put the entire query to a sybquery and use where outise to filter usimg the rank
 
 --! With statement
 --+ In the above case, if we wanna use the same inner table agin, we might need to repeat the same subquery again. we can avoid it using with
 --+ using with we can basically create a temporary table and use that table in the entire query anywhere
-with MyRankTable as (select * fromselect *,
-    rank() over(partition by D.department order by D.employeenumber) as Therank
+with
+    MyRankTable
+    as
+    (
+        select *
+    
+    
+     fromselect *,
+    rank
+() over
+(partition by D.department order by D.employeenumber) as Therank
     from [dbo].[tblDepartment] D join tblEmployee E
     on E.EmployeeNumber = A.EmployeeNumber)
-select * from MyRankTable
+select *
+from MyRankTable
 where Therank <= 5;
 
 --% we can use multiple tables in with statement
-with MyRankTable as (select * fromselect *,
-    rank() over(partition by D.department order by D.employeenumber) as Therank
+with
+    MyRankTable
+    as
+    (
+        select *
+    
+    
+     fromselect *,
+    rank
+() over
+(partition by D.department order by D.employeenumber) as Therank
     from [dbo].[tblDepartment] D join tblEmployee E
     on E.EmployeeNumber = A.EmployeeNumber)
-tblYear2014 as (select * from tbltransaction where dateoftransaction <= '2014-01-01')
-select * from MyRankTable
-left join tblYear2014
-on tblYear2014.EmployeeNumber = MyRankTable.EmployeeNumber
+tblYear2014 as
+(select *
+from tbltransaction
+where dateoftransaction <= '2014-01-01')
+select *
+from MyRankTable
+    left join tblYear2014
+    on tblYear2014.EmployeeNumber = MyRankTable.EmployeeNumber
 where Therank <= 5;
 
 --+ the scope is only in one select statement, we cant have multiple select using the with tables
 
 --! PIVOT
 --+ Used to group the values and return a result
-with myTable as
-(select year(DateOfTransaction) as TheYear, month(DateOfTransaction) as TheMonth, Amount from tblTransaction)
-select *| from myTable i
-PIVOT (sum(Amount) for TheMonth in ([[1], [2], [3], [4], [5], [6], [7], [8], [9] [20], [12], [12])) as mypvt
+with
+    myTable
+    as
+    (
+        select year(DateOfTransaction) as TheYear, month(DateOfTransaction) as TheMonth, Amount
+        from tblTransaction
+    )
+select *
+| from myTable i
+PIVOT
+(sum
+(Amount) for TheMonth in
+([[1], [2], [3], [4], [5], [6], [7], [8], [9] [20], [12], [12])) as mypvt
 ORDER BY TheYear
 --+ Here the grouping will happen for each year and for the months that we provided. and the amount will show
 
@@ -1417,25 +1508,32 @@ add Manager int
 go
 
 select E.£mployeeNumber, £.EmployeeFirstName, £.EmployeeLastName,
-M.EmployeeNumber as ManagerNumber, M.EmployeeFirstName as ManagerFirstName,
-M.EmployeeLastName as ManagerLastName
+    M.EmployeeNumber as ManagerNumber, M.EmployeeFirstName as ManagerFirstName,
+    M.EmployeeLastName as ManagerLastName
 from tblEmployee as E
-left JOIN tblemployee as M
-on E.Manager = M.EmployeeNumber
+    left JOIN tblemployee as M
+    on E.Manager = M.EmployeeNumber
 
 --! Recursive statement - CTE Common table expression
 --% to find the boss level, we can use recursive with
 --+ It actually loops through the table(kinda), or it is like joining with the same table, and looping the same table.
-with myTable as(
-    select *, 0 as BossLevel
-    from tblemployee where manager is null
-    union all
-    select *, M.BossLevel + 1 as BossLevel
-    from tblemployee as E
-    join myTable as M     --+ when it go through ech record, we are joining with the same table and inserting into the same table, so the table will grow and we select from the same table
-    where E.Manager = M.EmployeeNumber
-)
-select * from myTable
+with
+    myTable
+    as
+
+    (
+                    select *, 0 as BossLevel
+            from tblemployee
+            where manager is null
+        union all
+            select *, M.BossLevel + 1 as BossLevel
+            from tblemployee as E
+                join myTable as M 
+            --+ when it go through ech record, we are joining with the same table and inserting into the same table, so the table will grow and we select from the same table
+            where E.Manager = M.EmployeeNumber
+    )
+select *
+from myTable
 
 --! functions
 --https://docs.microsoft.com/en-us/sql/t-sql/statements/create-function-transact-sql?view=sql-server-ver15
@@ -1446,14 +1544,17 @@ CREATE function myFunction
 Returns int
 AS
 BEGIN
-Return @Amount * @Amount;
+    Return @Amount * @Amount;
 END
 GO
 
-select employeeNumber, dbo.myFunction(amount) from tblTransaction   --+ we must use schema name
+select employeeNumber, dbo.myFunction(amount)
+from tblTransaction
+--+ we must use schema name
 
 declare @var int;
-execute @var = dbo.myFunction 123;   --+ we can call it in this way as well
+execute @var = dbo.myFunction 123;
+--+ we can call it in this way as well
 select @var;
 
 --% ex-
@@ -1464,10 +1565,11 @@ CREATE function NumberOfTransactions
 returns int
 as
 begin
-Declare @NumberOfTransactions int;
-select @NumberOfTransactions = count(*) from tblTransaction
-where employeeNumber = @employeeNumber;
-return @NumberOfTransactions;
+    Declare @NumberOfTransactions int;
+    select @NumberOfTransactions = count(*)
+    from tblTransaction
+    where employeeNumber = @employeeNumber;
+    return @NumberOfTransactions;
 end
 go
 
@@ -1476,10 +1578,13 @@ go
 create function TransactionList(@employeeNumber int)
 Returns Table as return
 (
-    select * from tblTransaction where employeeNumber = @employeeNumber;
+    select *
+from tblTransaction
+where employeeNumber = @employeeNumber;
 )
 
-select * from dbo.TransactionList;
+select *
+from dbo.TransactionList;
 
 --! Multistatement table function
 create function FullName(@employeeNumber int)
@@ -1488,10 +1593,13 @@ Returns @fullnameTable Table(
     fullName varchar(max)
 ) as
 begin
-return
+    return
 (
-    insert into fullnameTable select employeeNumber,firstName+lastName as fullName from tblemployee where employeeNumber = @employeeNumber;
-)
+    insert into fullnameTable
+    select employeeNumber, firstName+lastName as fullName
+    from tblemployee
+    where employeeNumber = @employeeNumber;
+    )
 end
 --+ we cant use joins with result of function
 --+ But we can use apply
@@ -1500,7 +1608,8 @@ end
 --+ Evaluates right_table_source against each row of the left_table_source to produce rowsets.
 --+ Outer apply act like a left join
 --+ cross apply act like a inner join
-select * from tblTransactionas T
+select *
+from tblTransactionas T
 outer apply FullName(T.EmployeeNumber) as N
 --+ we can use UDF in select, and where
 --+ basically we can do insert or update or anything inthe right table expression
@@ -1510,12 +1619,14 @@ outer apply FullName(T.EmployeeNumber) as N
 create synonym EmployeeTable
 for tblEmployee
 go
-select * from employeeTable
+select *
+from employeeTable
 --+ when we create a synonym, it is not necessary to have a table at that time
 --+ we can point to different db as well
 
 --! Dynamic query
-declare @command = as varchar(max);
+declare @command = as varchar
+(max);
 set @command = 'select * from tblEmployee where employeeNumber = ';
 declare @value varchar(10);
 set @value = '10'
@@ -1523,11 +1634,15 @@ execute (@command + @value);
 --% this is SQL injection
 --! Do not do it
 --% we can use something different
-declare @command = as nvarchar(max);    --+ this must be nvarchar
+declare @command = as nvarchar
+(max);
+--+ this must be nvarchar
 set @command = N'select * from tblEmployee where employeeNumber = @empNum';
-declare @value nvarchar(10);   --+ this must be nvarchar
+declare @value nvarchar(10);
+--+ this must be nvarchar
 set @value = N'10'
-execute sys.sp_executesql @statement = command, @params = N'@empNum int', @empNum = @value --+ much safer way
+execute sys.sp_executesql @statement = command, @params = N'@empNum int', @empNum = @value
+--+ much safer way
 
 --! GUID
 --+ it is a unique identifier
@@ -1536,19 +1651,46 @@ SET @newvalue = NEWID();
 select @newvalue as newvalue;
 --+ every time it will be a new value
 
-create table uniqueTables (
-    UniqueID uniqueidentifier constant df default NEWID(),  --+ here the value will be random every time and jhave a performance problem
+create table uniqueTables
+(
+    UniqueID uniqueidentifier
+    constant df default NEWID
+    (),  --+ here the value will be random every time and jhave a performance problem
     EMPNUM int
 )
 
-create table uniqueTables (
-    UniqueID uniqueidentifier constant df default NEWSEQUENTIALID(),   --+ here the GUID created will be in sequance and better performance
+    create table uniqueTables
+    (
+        UniqueID uniqueidentifier
+        constant df default NEWSEQUENTIALID
+        (),   --+ here the GUID created will be in sequance and better performance
     EMPNUM int
 )
 --+ GUID takes more space
 
---! skipped SEQUENCE
+--! SEQUENCE
+--+ identity is table dependent. but sequence is not table dependant. it is an independant obbject. we can use it in multiple places
+go
+create sequence newSeq AS INT
+start with 1
+increment by 1
+minvalue 1
+maxvalue 9999999999999 --Not necessary to use
+cycle --nocycle
+--+ for cycle, it will go back to min value after max value, dont use cycle for unique column
+--+ identity will not roll back, but sequence will
+Create sequence seq2 as INT --+ we can create like this as well.
 
+alter table tblName
+add nextNumber int constraint DF_nextNumber default next value for newSeq;
+--+ we can use in update as well
+
+--+for restarting the sequence
+alter sequence newseq
+restart
+
+alter sequence newseq
+restart 1000
 --! xml
 <shopping>                      --+ root element, its better to have a single root element. if there is multiple root elements, which is a not well formed xml
     <item cost="5">Apple</item>     --+ cost is an attribute
@@ -1689,39 +1831,46 @@ SET STATISTICS TIME ON --+ for seeing execution time
 --+ @@FETCH_STATUS
 
 go
-declare @employeeNumber int;
-declare cursorforemp CURSOR FOR SELECT employeeNumber FROM tblEmployee
-open cursorforemp
-fetch next from cursorforemp into @employeeNumber
-while @@FETCH_STATUS = 0
+        declare @employeeNumber int;
+        declare cursorforemp CURSOR FOR SELECT employeeNumber
+        FROM tblEmployee
+        open cursorforemp
+        fetch next from cursorforemp into @employeeNumber
+        while @@FETCH_STATUS = 0
 begin
-select * from tblTransaction WHERE employeeNumber = @employeeNumber;
-fetch next from cursorforemp into @employeeNumber
-END
-CLOSE cursorforemp
-DEALLOCATE cursorforemp
+            select *
+            from tblTransaction
+            WHERE employeeNumber = @employeeNumber;
+            fetch next from cursorforemp into @employeeNumber
+        END
+        CLOSE cursorforemp
+        DEALLOCATE cursorforemp
 GO
 
---!cursor is very slow
---! Statitics and execution plan
---! different joins
---% Merge joing - efficient, needs indexes
---% loop join - small table and big table
---% hash join - 2 big table without indexes
+        --!cursor is very slow
+        --! Statitics and execution plan
+        --! different joins
+        --% Merge joing - efficient, needs indexes
+        --% loop join - small table and big table
+        --% hash join - 2 big table without indexes
 
---! sorting will cost lot of performance, dont do it if it is not necessary
---% we can use with recompile for stored procedure, so every time it will create new execution plan
+        --! sorting will cost lot of performance, dont do it if it is not necessary
+        --% we can use with recompile for stored procedure, so every time it will create new execution plan
 
---! DMV
-select * from sys.dm_db_index_usage_stats   --+ used to find the index details and stats
-select db_name()   --+ to find the db name from the id
-select db_id() --+ for finding the current db id
+        --! DMV
+        select *
+        from sys.dm_db_index_usage_stats
+        --+ used to find the index details and stats
+        select db_name()
+        --+ to find the db name from the id
+        select db_id()
+        --+ for finding the current db id
 
-select db_name(database_id),object_name(object_id),i.name , *
-from sys.dm_db_index_usage_stats as ius
-join sys.indexes i
-on ius.object_id = i.object_id and ius.index_id = i.index_id
-where database_id = db_id()
+        select db_name(database_id), object_name(object_id), i.name , *
+        from sys.dm_db_index_usage_stats as ius
+            join sys.indexes i
+            on ius.object_id = i.object_id and ius.index_id = i.index_id
+        where database_id = db_id()
 --+  we can find unused indexes and we can remove it.
 
 --% Cast is standard sql, convert is nonstandard
