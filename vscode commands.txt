@@ -14,6 +14,7 @@ cntrl + shift + l - replase all matching words
 alt d - duplicate
 cntrl shift j - jumpie
 alt shift up or down - move the word up and down
+cntrl enter to go to new line when we are in middle of aline
 Fira Code font https://github.com/tonsky/FiraCode
 quokka extetension
 Rainbow Brackets extention
